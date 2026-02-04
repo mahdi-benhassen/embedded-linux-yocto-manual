@@ -48,6 +48,7 @@ When you initialize a build environment (using \texttt{oe-init-build-env}), a bu
 \end{itemize}
 
 \section{Shared State Cache (sstate)}
+\normalfont
 Yocto's "secret weapon" is the sstate cache. Before executing a task (like compilation), BitBake checks if a valid artifact exists in the sstate-cache. If the inputs (compiler version, source code, configuration) haven't changed, it simply extracts the result instead of rebuilding.
 
 \begin{tip}
