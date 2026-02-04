@@ -1,0 +1,25 @@
+ \chapter{Boot Process and Bootloaders}
+ \section{Overview}
+ The boot process initializes hardware, loads the kernel, and transfers control. In embedded Linux, popular bootloaders include U-Boot and Barebox. They provide command-line access, device initialization, and boot scripting.
+ \section{U-Boot Stages}
+ U-Boot typically comprises a first-stage loader and the main U-Boot binary. The ROM loads the first stage, which configures memory and loads U-Boot. U-Boot then loads the kernel and device tree and passes boot arguments.
+ \section{Hands-On: U-Boot in QEMU}
+ Build U-Boot for an ARM virt machine and boot a kernel with a device tree.
+ \begin{lstlisting}[language=bash]
+ git clone https://source.denx.de/u-boot/u-boot.git
+ cd u-boot
+ make qemu_arm_defconfig
+ make -j$(nproc)
+ \end{lstlisting}
+ Launch QEMU using the built U-Boot and provide kernel and device tree images.
+ \begin{lstlisting}[language=bash]
+ qemu-system-arm -M virt -cpu cortex-a9 -m 512M -nographic \
+   -bios u-boot.bin \
+   -kernel path/to/zImage \
+   -dtb path/to/virt.dtb \
+   -append "console=ttyAMA0 root=/dev/ram0"
+ \end{lstlisting}
+ \section{Boot Arguments}
+ Kernel command-line parameters configure consoles, root filesystem, networking, and init. Adjust boot arguments to debug early boot, select initramfs, or mount storage devices.
+ \section{Flashing and Storage}
+ Deploy bootloader and kernel images to eMMC, SD, SPI-NOR, or NAND depending on your hardware. Use verified update procedures with checksums and rollback when possible.

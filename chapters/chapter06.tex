@@ -1,0 +1,15 @@
+ \chapter{Device Tree and Drivers}
+ \section{Binding Concepts}
+ Device drivers bind to device tree nodes via compatible strings. Properties define addresses, interrupts, clocks, and GPIOs. Ensure compatible values match driver expectations.
+ \section{Editing a DTS}
+ Modify a device tree to enable a UART and a GPIO LED. Recompile and deploy the dtb.
+ \begin{lstlisting}[language=bash]
+ cd linux
+ vi arch/arm/boot/dts/your-board.dts
+ make ARCH=arm CROSS_COMPILE=arm-linux-gnueabihf- dtbs
+ scp arch/arm/boot/dts/your-board.dtb user@board-ip:/boot
+ \end{lstlisting}
+ \section{Driver Selection}
+ Enable required drivers in menuconfig and constrain the build to the target board support package. Prefer in-tree drivers and upstream bindings for maintainability.
+ \section{Hands-On: LED Control}
+ Expose a GPIO LED via device tree and control it using sysfs or libgpiod to confirm bindings. Observe dmesg for probe success.

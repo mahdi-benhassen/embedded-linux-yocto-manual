@@ -1,0 +1,19 @@
+ \chapter{Linux Kernel Basics}
+ \section{Configuration}
+ Configure the kernel to match the target hardware using defconfig and menuconfig. Important areas include processor type, buses, filesystems, networking, and device drivers.
+ \begin{lstlisting}[language=bash]
+ git clone https://git.kernel.org/pub/scm/linux/kernel/git/stable/linux.git
+ cd linux
+ make ARCH=arm CROSS_COMPILE=arm-linux-gnueabihf- defconfig
+ make ARCH=arm CROSS_COMPILE=arm-linux-gnueabihf- menuconfig
+ \end{lstlisting}
+ \section{Build and Install}
+ Build the kernel, device tree blobs, and modules using cross-compilation.
+ \begin{lstlisting}[language=bash]
+ make ARCH=arm CROSS_COMPILE=arm-linux-gnueabihf- -j$(nproc) zImage dtbs
+ make ARCH=arm CROSS_COMPILE=arm-linux-gnueabihf- modules
+ \end{lstlisting}
+ \section{Device Tree}
+ The device tree describes non-enumerable hardware such as memory, buses, and peripherals. Adjust nodes and properties to match board schematics and verify driver bindings.
+ \section{Debugging}
+ Use earlyprintk, dynamic debug, and printk levels to inspect boot failures. Enable symbols and compile with debug options to improve observability when using gdb and perf.

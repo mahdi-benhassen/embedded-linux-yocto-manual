@@ -1,0 +1,30 @@
+ \chapter{Cross-Compilation and Toolchains}
+ \section{Concepts}
+ Cross-compilation uses a compiler running on the host to produce binaries for a different target architecture. A toolchain provides compiler, linker, binutils, libc, headers, and optional debugging tools for the target.
+ \section{Obtaining a Toolchain}
+ Use a distribution-provided cross-toolchain or generate one with crosstool-NG or the Yocto Project. Yocto can export a Software Development Kit containing cross-compilers and target sysroot.
+ \section{Hello World Cross-Build}
+ Create and build a simple program for an ARM target using a cross-compiler.
+ \begin{lstlisting}[language=bash]
+ mkdir -p ~/toolchains/hello
+ cd ~/toolchains/hello
+ cat > hello.c << 'EOF'
+ #include <stdio.h>
+ int main() { printf("Hello, ARM\\n"); return 0; }
+ EOF
+ arm-linux-gnueabihf-gcc hello.c -o hello
+ file hello
+ \end{lstlisting}
+ Transfer the binary to the target and execute it.
+ \begin{lstlisting}[language=bash]
+ scp hello user@board-ip:/tmp
+ ssh user@board-ip /tmp/hello
+ \end{lstlisting}
+ \section{Sysroot and Headers}
+ The sysroot contains headers and libraries matching the target root filesystem. Ensure your cross-compiler links against the correct libc and uses the target headers for ABI compatibility. Use pkg-config with a target-specific prefix to find libraries.
+ \section{Build Systems}
+ Employ build systems like CMake and Meson for larger projects. Configure them to use a toolchain file specifying compilers, sysroot, and target architecture.
+ \begin{lstlisting}[language=bash]
+ cmake -DCMAKE_TOOLCHAIN_FILE=toolchain-armhf.cmake -S . -B build
+ cmake --build build -j$(nproc)
+ \end{lstlisting}

@@ -1,0 +1,9 @@
+ \chapter{Reproducibility, CI, and Release}
+ \section{State and Mirrors}
+ Control DL_DIR and SSTATE_DIR to cache downloads and shared state. Use sstate mirrors to accelerate rebuilds and ensure consistent artifacts across development machines and CI nodes.
+ \section{Reproducible Builds}
+ Pin layers and branches, use fixed SRCREV values for git sources, and avoid floating dependencies. Record build metadata and manifests to support repeat runs and auditing.
+ \section{Licensing}
+ Ensure all recipes include license declarations and checksums. Collect license reports and artifacts for compliance and distribution.
+ \section{CI Integration}
+ Automate builds using containers or dedicated build hosts. Run bitbake in clean workspaces and publish artifacts with integrity checks. Incorporate QA gates and image tests to validate releases.

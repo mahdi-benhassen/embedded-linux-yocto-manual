@@ -1,0 +1,9 @@
+ \chapter{Layers and Customization}
+ \section{Layer Design}
+ Organize metadata by functionality and hardware. Keep BSP, distro configuration, and application recipes in separate layers. Use priority and compatibility fields to control overrides.
+ \section{Configuration}
+ Customize local.conf for parallelism, DL_DIR, SSTATE_DIR, and MACHINE. Configure DISTRO features and IMAGE features to include services and packages.
+ \section{bbappend}
+ Use .bbappend files to modify upstream recipes without forking. Override variables, add patches, or adjust tasks. Ensure layer priority allows the intended override.
+ \section{Hands-On: Custom Image}
+ Create a custom image recipe that extends core-image-base and adds your application package and system services. Build and deploy to the target.

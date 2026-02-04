@@ -1,0 +1,36 @@
+ \chapter{BitBake and Recipes}
+ \section{Recipe Structure}
+ A recipe declares metadata including description, license, SRC_URI for fetching sources, and tasks like do_compile and do_install. Variables control build flags and dependencies.
+ \section{Hands-On: Simple Recipe}
+ Create a layer and add a recipe to build a hello application.
+ \begin{lstlisting}[language=bash]
+ cd ~/yocto/poky
+ source oe-init-build-env
+ bitbake-layers create-layer ../meta-hello
+ bitbake-layers add-layer ../meta-hello
+ mkdir -p ../meta-hello/recipes-example/hello
+ cat > ../meta-hello/recipes-example/hello/hello_1.0.bb << 'EOF'
+ SUMMARY = "Hello application"
+ LICENSE = "MIT"
+ LIC_FILES_CHKSUM = "file://LICENSE;md5=3b83ef96387f14655fc854ddc3c6bd57"
+ SRC_URI = "file://hello.c file://LICENSE"
+ S = "${WORKDIR}"
+ do_compile() {
+     ${CC} ${CFLAGS} ${LDFLAGS} hello.c -o hello
+ }
+ do_install() {
+     install -d ${D}${bindir}
+     install -m 0755 hello ${D}${bindir}/hello
+ }
+ EOF
+ cat > ../meta-hello/recipes-example/hello/hello.c << 'EOF'
+ #include <stdio.h>
+ int main(){ printf("Hello from Yocto\\n"); return 0; }
+ EOF
+ cp /usr/share/common-licenses/MIT ../meta-hello/recipes-example/hello/LICENSE
+ bitbake hello
+ \end{lstlisting}
+ \section{Tasks and Dependencies}
+ BitBake creates a task graph with dependencies between recipes. Use bitbake -g to generate graphs and inspect task ordering and shared state reuse.
+ \section{Packaging}
+ Enable packaging into rpm, deb, or ipk and ensure the do_package task creates correct file lists and dependencies.

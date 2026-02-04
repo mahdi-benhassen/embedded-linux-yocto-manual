@@ -1,0 +1,44 @@
+ \chapter{Foundations of Embedded Linux}
+ \section{Purpose}
+ This chapter establishes the core concepts and vocabulary needed to design, build, and ship embedded Linux systems. It sets expectations for hardware, software, and the development workflow used throughout the book.
+ \section{Typical Architecture}
+ An embedded Linux product is composed of a hardware platform and a software stack. Hardware includes the CPU, memory, mass storage, networking interfaces, and peripherals. The software stack consists of a bootloader, the Linux kernel, a device tree, low-level drivers, a root filesystem with an init system, system services, and applications.
+ \section{Software Anatomy}
+ The bootloader initializes hardware and loads the kernel and device tree. The kernel manages memory, processes, filesystems, and device drivers. The device tree describes non-discoverable hardware. The root filesystem contains init, shell, utilities, libraries, and application code. The init system starts services and manages system states.
+ \section{Development Workflow}
+ The primary workflow is cross-compilation on a host machine and deployment onto a target board or emulator. The steps are choose target, prepare toolchain, build bootloader and kernel, assemble root filesystem, integrate applications, deploy, debug, iterate, and automate builds.
+ \section{Hands-On: Minimal Root Filesystem}
+ The following exercise demonstrates building and running a minimal BusyBox-based root filesystem under QEMU for an ARM target using a typical Linux host. Create a working directory and obtain BusyBox sources.
+ \begin{lstlisting}[language=bash]
+ mkdir -p ~/elinux/minimal
+ cd ~/elinux/minimal
+ wget https://busybox.net/downloads/busybox-1.36.1.tar.bz2
+ tar xf busybox-1.36.1.tar.bz2
+ cd busybox-1.36.1
+ make defconfig
+ make -j$(nproc)
+ make install CONFIG_PREFIX=~/elinux/minimal/rootfs
+ \end{lstlisting}
+ Create the minimal directory layout and init script.
+ \begin{lstlisting}[language=bash]
+ cd ~/elinux/minimal/rootfs
+ mkdir -p proc sys dev etc tmp var mnt root home bin sbin usr/bin usr/sbin
+ echo '#!/bin/sh' > init
+ echo 'mount -t proc none /proc' >> init
+ echo 'mount -t sysfs none /sys' >> init
+ echo 'echo "Hello from minimal rootfs"' >> init
+ echo '/bin/sh' >> init
+ chmod +x init
+ \end{lstlisting}
+ Package the root filesystem into an initramfs and launch with QEMU using a prebuilt Linux kernel suitable for ARM. Replace kernel image paths with a valid one.
+ \begin{lstlisting}[language=bash]
+ cd ~/elinux/minimal
+ find rootfs | cpio -H newc -o | gzip > initramfs.cpio.gz
+ qemu-system-arm -M virt -cpu cortex-a9 -m 512M \
+   -nographic \
+   -kernel path/to/zImage \
+   -initrd initramfs.cpio.gz \
+   -append "console=ttyAMA0"
+ \end{lstlisting}
+ \section{Outcomes}
+ You can boot a minimal Linux environment, observe process startup, and interact with a shell. This exercise introduces cross-building concepts, init scripts, and emulator-based bring-up that will recur throughout the manual.

@@ -1,0 +1,18 @@
+ \chapter{SDK, Devtool, and Workflow}
+ \section{SDK}
+ Yocto can generate an extensible SDK for cross-building applications outside the core build. Install the SDK and source the environment to obtain compilers and the target sysroot.
+ \begin{lstlisting}[language=bash]
+ bitbake core-image-base -c populate_sdk
+ sh tmp/deploy/sdk/poky-glibc-x86_64-core-image-base-armv7a-toolchain.sh
+ source /opt/poky/3.1/environment-setup-armv7a-poky-linux-gnueabi
+ \end{lstlisting}
+ \section{devtool}
+ Use devtool to add, modify, and test recipes. It can set up a workspace, patch sources, and rebuild incrementally.
+ \begin{lstlisting}[language=bash]
+ source oe-init-build-env
+ devtool add hello https://example.com/hello.git
+ devtool build hello
+ devtool deploy-target hello user@board-ip
+ \end{lstlisting}
+ \section{Workflow}
+ Develop iteratively with devtool and integrate changes into layers once the application stabilizes. Export patches and update recipes accordingly for long-term maintenance.

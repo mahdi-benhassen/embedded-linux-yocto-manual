@@ -1,0 +1,9 @@
+ \chapter{Yocto Project Fundamentals}
+ \section{Scope}
+ The Yocto Project provides a build framework to create custom Linux distributions for embedded systems. It uses OpenEmbedded and BitBake to describe metadata, tasks, and artifacts.
+ \section{Key Concepts}
+ Important entities are layers, recipes, classes, tasks, images, and machines. Layers group related metadata. Recipes describe how to fetch, configure, build, and package software. Classes encapsulate common behavior. Tasks are build steps managed by BitBake.
+ \section{Metadata}
+ Metadata files include .bb recipes, .bbappend overrides, .bbclass classes, and configuration in local.conf and bblayers.conf. The build directory separates working state and sstate cache.
+ \section{Outputs}
+ Yocto produces images, packages, SDKs, and artifacts like licenses and manifests. Images are configured by DISTRO and IMAGE features and tailored to specific machines.

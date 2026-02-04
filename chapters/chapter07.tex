@@ -1,0 +1,9 @@
+ \chapter{Root Filesystem and Init Systems}
+ \section{Root Filesystem Components}
+ The root filesystem contains init, shells, core utilities, libraries, configuration files, and application artifacts. Common choices include BusyBox for utilities and musl or glibc for libc.
+ \section{Init Systems}
+ System initialization is managed by init. BusyBox provides a simple init, while systemd offers service management, logging, and dependency handling. Choose based on product needs and footprint.
+ \section{Assembly}
+ Assemble the rootfs by installing utilities, creating directories, and configuring init. Integrate networking and storage tools appropriate to the platform.
+ \section{Hands-On: systemd Boot}
+ Enable systemd in kernel options and include systemd packages in the rootfs. Verify with the presence of pid 1 and systemctl output once the system boots.

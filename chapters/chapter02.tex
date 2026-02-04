@@ -1,0 +1,51 @@
+ \chapter{Development Environment Setup}
+ \section{Host Requirements}
+ A reliable host environment is required for cross-compilation and image creation. Use a recent Linux distribution with git, gcc, g++, make, python3, rsync, tar, gzip, bzip2, cpio, and qemu. Windows hosts can use WSL2 with an Ubuntu distribution.
+ \section{Core Tools}
+ Install git, compilers, and QEMU. The following commands target Debian-based systems.
+ \begin{lstlisting}[language=bash]
+ sudo apt update
+ sudo apt install -y build-essential git python3 python3-pip \
+   qemu-system-arm qemu-system-aarch64 qemu-system-x86 \
+   cpio rsync bzip2 gzip unzip tar
+ \end{lstlisting}
+ \section{Version Control}
+ Configure your identity and a clean workflow for embedded projects.
+ \begin{lstlisting}[language=bash]
+ git config --global user.name "Engineer"
+ git config --global user.email "engineer@example.com"
+ git config --global pull.rebase true
+ git config --global init.defaultBranch main
+ \end{lstlisting}
+ \section{Serial and Networking}
+ Interact with boards using serial consoles and SSH. On Linux, connect with tools like screen or picocom. Use DHCP or static IP for networking. Confirm connectivity with ping and ssh.
+ \begin{lstlisting}[language=bash]
+ sudo apt install -y screen picocom openssh-client
+ screen /dev/ttyUSB0 115200
+ ssh user@board-ip
+ \end{lstlisting}
+ \section{Editors and Build Integration}
+ Use an extensible editor with support for cross-development. Pair an editor such as VS Code with remote SSH to edit files on target boards during debug. Integrate terminals for build, deployment, and flashing workflows.
+ \section{Hands-On: QEMU Sanity Boot}
+ Verify the environment by booting a prebuilt kernel and initramfs under QEMU.
+ \begin{lstlisting}[language=bash]
+ wget https://busybox.net/downloads/binaries/1.36.1-i686/busybox
+ chmod +x busybox
+ mkdir -p ~/devsetup/initramfs/bin
+ cp busybox ~/devsetup/initramfs/bin
+ cd ~/devsetup/initramfs
+ ln -s bin/busybox sh
+ echo '#!/bin/sh' > init
+ echo 'mount -t proc none /proc' >> init
+ echo 'mount -t sysfs none /sys' >> init
+ echo 'echo "Environment OK"' >> init
+ echo '/bin/sh' >> init
+ chmod +x init
+ find . | cpio -H newc -o | gzip > ../initramfs.cpio.gz
+ \end{lstlisting}
+ Launch QEMU with a valid kernel image and the generated initramfs.
+ \begin{lstlisting}[language=bash]
+ qemu-system-arm -M virt -cpu cortex-a9 -m 256M -nographic \
+   -kernel path/to/zImage -initrd ~/devsetup/initramfs.cpio.gz \
+   -append "console=ttyAMA0"
+ \end{lstlisting}

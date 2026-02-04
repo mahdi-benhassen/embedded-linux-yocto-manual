@@ -1,0 +1,14 @@
+ \chapter{Debugging and Profiling}
+ \section{Observability}
+ Instrument the system with logs, dmesg, and journald. Use strace to inspect syscalls, ltrace for library calls, and perf for performance analysis.
+ \section{gdbserver}
+ Run gdbserver on the target and connect from the host with the cross-gdb for your architecture.
+ \begin{lstlisting}[language=bash]
+ ssh user@board-ip gdbserver :1234 /usr/bin/your-app
+ arm-linux-gnueabihf-gdb your-app
+ (gdb) target remote board-ip:1234
+ \end{lstlisting}
+ \section{Tracing}
+ Analyze application behavior and kernel events using perf and ftrace. Capture hot paths and use flamegraphs to visualize CPU usage where applicable.
+ \section{Hands-On: strace}
+ Observe file operations and networking calls to identify failures in configuration or runtime dependencies.

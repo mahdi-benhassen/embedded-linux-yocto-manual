@@ -1,0 +1,24 @@
+ \chapter{Yocto Build Setup}
+ \section{Obtain Sources}
+ Clone the Poky repository and any needed layers. Choose a release branch appropriate for your product.
+ \begin{lstlisting}[language=bash]
+ mkdir -p ~/yocto
+ cd ~/yocto
+ git clone https://git.yoctoproject.org/poky
+ cd poky
+ git checkout kirkstone
+ \end{lstlisting}
+ \section{Initialize Build Directory}
+ Source the environment script to create and enter a build directory.
+ \begin{lstlisting}[language=bash]
+ source oe-init-build-env
+ \end{lstlisting}
+ \section{Configure Layers}
+ Edit conf/bblayers.conf to add external layers and conf/local.conf for machine and image customization. Verify layer compatibility with the selected release.
+ \section{First Build}
+ Build a minimal image to confirm the environment and dependencies.
+ \begin{lstlisting}[language=bash]
+ bitbake core-image-minimal
+ \end{lstlisting}
+ \section{Artifacts}
+ Inspect tmp/deploy/images for generated binaries. Use wic to create bootable images when supported by the machine.
