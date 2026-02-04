@@ -1,14 +1,70 @@
- \chapter{Debugging and Profiling}
- \section{Observability}
- Instrument the system with logs, dmesg, and journald. Use strace to inspect syscalls, ltrace for library calls, and perf for performance analysis.
- \section{gdbserver}
- Run gdbserver on the target and connect from the host with the cross-gdb for your architecture.
- \begin{lstlisting}[language=bash]
- ssh user@board-ip gdbserver :1234 /usr/bin/your-app
- arm-linux-gnueabihf-gdb your-app
- (gdb) target remote board-ip:1234
- \end{lstlisting}
- \section{Tracing}
- Analyze application behavior and kernel events using perf and ftrace. Capture hot paths and use flamegraphs to visualize CPU usage where applicable.
- \section{Hands-On: strace}
- Observe file operations and networking calls to identify failures in configuration or runtime dependencies.
+\chapter{Debugging and Profiling}
+
+\section{The Debugging Mindset}
+Debugging embedded systems is harder than desktop apps. You have limited access, no screen, and hardware glitches.
+\textbf{Rule #1}: Always check the serial console logs (\texttt{dmesg}).
+
+\section{Userspace Debugging}
+\subsection{strace: The First Defense}
+\texttt{strace} traces System Calls. It shows exactly what an application is asking the kernel to do (open files, read network, allocate memory).
+\begin{lstlisting}[language=bash]
+# Trace file operations of 'myapp'
+strace -e trace=file ./myapp
+\end{lstlisting}
+If \texttt{myapp} fails to start because of a missing config file, \texttt{strace} will show \texttt{open("/etc/myapp.conf") = -1 ENOENT}.
+
+\subsection{GDB (GNU Debugger)}
+\textbf{Remote Debugging} is the standard.
+\begin{enumerate}
+    \item \textbf{Target}: Run \texttt{gdbserver}.
+    \begin{lstlisting}[language=bash]
+gdbserver :9000 /usr/bin/myapp
+    \end{lstlisting}
+    \item \textbf{Host}: Run the cross-gdb from your SDK.
+    \begin{lstlisting}[language=bash]
+arm-linux-gnueabihf-gdb myapp
+(gdb) target remote 192.168.1.50:9000
+(gdb) continue
+    \end{lstlisting}
+\end{enumerate}
+
+\section{Kernel Debugging}
+\subsection{Oops and Panics}
+A "Kernel Panic" is a fatal error. An "Oops" is a non-fatal error in a driver.
+When you see a stack trace in \texttt{dmesg}:
+1. Look for the \textbf{PC (Program Counter)} address.
+2. Use the cross-toolchain's \texttt{addr2line} to find the code line.
+\begin{lstlisting}[language=bash]
+arm-linux-gnueabihf-addr2line -e vmlinux <PC_ADDRESS>
+\end{lstlisting}
+
+\subsection{Dynamic Debug}
+Enable debug prints at runtime without recompiling.
+\begin{lstlisting}[language=bash]
+echo 'file drivers/net/wireless/* +p' > /sys/kernel/debug/dynamic_debug/control
+\end{lstlisting}
+
+\section{Profiling Performance}
+\subsection{perf}
+The official Linux profiler.
+\begin{lstlisting}[language=bash]
+# Record CPU usage for 10 seconds
+perf record -a -g -- sleep 10
+# View report
+perf report
+\end{lstlisting}
+
+\subsection{FlameGraphs}
+Visualize \texttt{perf} data as a flame graph to spot hot paths instantly.
+1. Capture with \texttt{perf script}.
+2. Process with Brendan Gregg's FlameGraph scripts on the host.
+
+\section{Network Debugging}
+\begin{itemize}
+    \item \texttt{tcpdump}: Capture packets on the target.
+    \item \texttt{Wireshark}: Analyze the capture on your PC.
+    \item \texttt{ethtool}: Check physical link status (speed, duplex).
+    \begin{lstlisting}[language=bash]
+ethtool eth0
+    \end{lstlisting}
+\end{itemize}

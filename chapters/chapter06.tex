@@ -1,15 +1,85 @@
- \chapter{Device Tree and Drivers}
- \section{Binding Concepts}
- Device drivers bind to device tree nodes via compatible strings. Properties define addresses, interrupts, clocks, and GPIOs. Ensure compatible values match driver expectations.
- \section{Editing a DTS}
- Modify a device tree to enable a UART and a GPIO LED. Recompile and deploy the dtb.
- \begin{lstlisting}[language=bash]
- cd linux
- vi arch/arm/boot/dts/your-board.dts
- make ARCH=arm CROSS_COMPILE=arm-linux-gnueabihf- dtbs
- scp arch/arm/boot/dts/your-board.dtb user@board-ip:/boot
- \end{lstlisting}
- \section{Driver Selection}
- Enable required drivers in menuconfig and constrain the build to the target board support package. Prefer in-tree drivers and upstream bindings for maintainability.
- \section{Hands-On: LED Control}
- Expose a GPIO LED via device tree and control it using sysfs or libgpiod to confirm bindings. Observe dmesg for probe success.
+\chapter{Device Tree and Drivers}
+
+\section{What is a Device Tree?}
+On x86 (PCs), hardware is discoverable (PCIe enumeration, USB, ACPI). On embedded ARM, the kernel has no way to know that "a UART is at address 0x48020000" unless we tell it.
+The \textbf{Device Tree (DT)} is a data structure describing the hardware layout.
+
+\section{DTS Syntax}
+Device Tree Source (.dts) is a human-readable text file.
+
+\begin{lstlisting}
+/dts-v1/;
+#include "imx6ull.dtsi"
+
+/ {
+    model = "My Custom Board";
+    compatible = "myvendor,myboard", "fsl,imx6ull";
+
+    chosen {
+        bootargs = "console=ttymxc0,115200";
+    };
+
+    leds {
+        compatible = "gpio-leds";
+        pinctrl-names = "default";
+        pinctrl-0 = <&pinctrl_gpio_leds>;
+
+        status {
+            label = "status_led";
+            gpios = <&gpio1 3 GPIO_ACTIVE_LOW>;
+            linux,default-trigger = "heartbeat";
+        };
+    };
+};
+
+&uart1 {
+    pinctrl-names = "default";
+    pinctrl-0 = <&pinctrl_uart1>;
+    status = "okay";
+};
+\end{lstlisting}
+
+\section{Key Properties}
+\begin{itemize}
+    \item \texttt{compatible}: The most important property. It matches the node to a specific kernel driver.
+    \item \texttt{reg}: Physical address and size of memory-mapped registers.
+    \item \texttt{interrupts}: IRQ lines connected to the interrupt controller.
+    \item \texttt{status}: Set to \texttt{"okay"} to enable, or \texttt{"disabled"} to ignore.
+    \item \texttt{phandle} (\texttt{\&label}): A reference to another node (e.g., \texttt{\&uart1}).
+\end{itemize}
+
+\section{Compiling the Device Tree}
+The Device Tree Compiler (\texttt{dtc}) converts \texttt{.dts} (text) to \texttt{.dtb} (binary).
+\begin{lstlisting}[language=bash]
+# Compile
+dtc -I dts -O dtb -o myboard.dtb myboard.dts
+
+# Reverse compile (Binary to Text - useful for debugging!)
+dtc -I dtb -O dts myboard.dtb
+\end{lstlisting}
+
+\section{Interacting with Hardware from Userspace}
+Before writing a kernel driver, try to control hardware from userspace.
+
+\subsection{GPIO (New Way: libgpiod)}
+Do not use the deprecated \texttt{/sys/class/gpio}. Use \texttt{gpiod} tools.
+\begin{lstlisting}[language=bash]
+gpiodetect          # List chips
+gpioinfo            # List lines
+gpioset 0 3=1       # Set chip 0, line 3 to High
+gpioget 0 3         # Read chip 0, line 3
+\end{lstlisting}
+
+\subsection{I2C}
+Use \texttt{i2c-tools}.
+\begin{lstlisting}[language=bash]
+i2cdetect -y 1      # Scan bus 1
+i2cget -y 1 0x50 0x00  # Read byte from device 0x50
+\end{lstlisting}
+
+\subsection{LEDs}
+Controlled via sysfs.
+\begin{lstlisting}[language=bash]
+echo 1 > /sys/class/leds/status_led/brightness
+echo timer > /sys/class/leds/status_led/trigger
+\end{lstlisting}

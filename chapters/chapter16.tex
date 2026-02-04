@@ -1,9 +1,77 @@
- \chapter{Reproducibility, CI, and Release}
- \section{State and Mirrors}
-Control \texttt{DL\_DIR} and \texttt{SSTATE\_DIR} to cache downloads and shared state. Use sstate mirrors to accelerate rebuilds and ensure consistent artifacts across development machines and CI nodes.
- \section{Reproducible Builds}
- Pin layers and branches, use fixed SRCREV values for git sources, and avoid floating dependencies. Record build metadata and manifests to support repeat runs and auditing.
- \section{Licensing}
- Ensure all recipes include license declarations and checksums. Collect license reports and artifacts for compliance and distribution.
- \section{CI Integration}
- Automate builds using containers or dedicated build hosts. Run bitbake in clean workspaces and publish artifacts with integrity checks. Incorporate QA gates and image tests to validate releases.
+\chapter{Reproducibility, CI, and Release}
+
+\section{Reproducible Builds}
+A build is "reproducible" if bit-for-bit identical binaries can be generated from the same source code.
+Yocto achieves this by:
+\begin{itemize}
+    \item \textbf{Pinning Revisions}: Use specific git hashes in \texttt{SRCREV}, not branch names.
+    \item \textbf{Deterministic Timestamps}: Use \texttt{SOURCE\_DATE\_EPOCH}.
+    \item \textbf{Host Independence}: Builds run in a sanitized environment (unaffected by host locale/distro).
+\end{itemize}
+
+\section{Continuous Integration (CI)}
+Do not build on developer laptops. Use a CI server (Jenkins, GitLab CI, GitHub Actions).
+
+\subsection{Recommended Pipeline}
+\begin{enumerate}
+    \item \textbf{Trigger}: Commit to \texttt{main} or Pull Request.
+    \item \textbf{Build}: Run \texttt{bitbake core-image-minimal}.
+    \item \textbf{Test}: Run \texttt{testimage} (QEMU runtime tests).
+    \item \textbf{Artifacts}: Archive images and SDKs.
+\end{enumerate}
+
+\subsection{Using Kas}
+\texttt{kas} is a tool to manage Yocto configuration (layers, local.conf) in a single YAML file. It replaces manual \texttt{git clone} and \texttt{source oe-init-build-env}.
+
+Example \texttt{kas.yml}:
+\begin{lstlisting}[language=yaml]
+header:
+  version: 10
+
+machine: qemuarm
+distro: poky
+target: core-image-minimal
+
+repos:
+  poky:
+    url: "https://git.yoctoproject.org/poky"
+    refspec: "kirkstone"
+    layers:
+      meta:
+      meta-poky:
+      meta-yocto-bsp:
+\end{lstlisting}
+
+Run it:
+\begin{lstlisting}[language=bash]
+kas build kas.yml
+\end{lstlisting}
+
+\section{License Compliance}
+Embedded Linux products typically contain open-source software (GPL, MIT, etc.). You \textbf{must} comply with license obligations.
+
+\subsection{Generating a Manifest}
+In \texttt{local.conf}:
+\begin{lstlisting}
+INHERIT += "archiver"
+ARCHIVER_MODE[src] = "original"
+COPY_LIC_MANIFEST = "1"
+COPY_LIC_DIRS = "1"
+\end{lstlisting}
+This will gather all source code and license texts into \texttt{tmp/deploy/licenses/}.
+
+\section{Software Bill of Materials (SBOM)}
+Modern security standards require an SBOM. Yocto can generate SPDX documents.
+\begin{lstlisting}
+INHERIT += "create-spdx"
+\end{lstlisting}
+This produces \texttt{.spdx.json} files describing every package and file in the image.
+
+\section{Release Checklist}
+Before shipping:
+\begin{itemize}
+    \item [ ] \textbf{Security}: Root password set? SSH disabled/secured? Debug ports closed?
+    \item [ ] \textbf{Optimization}: \texttt{EXTRA\_IMAGE\_FEATURES} (debug-tweaks) removed?
+    \item [ ] \textbf{Legal}: License manifest and source code archive prepared?
+    \item [ ] \textbf{Testing}: Did the automated test suite pass?
+\end{itemize}

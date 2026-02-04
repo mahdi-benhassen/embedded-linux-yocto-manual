@@ -1,19 +1,107 @@
- \chapter{Linux Kernel Basics}
- \section{Configuration}
- Configure the kernel to match the target hardware using defconfig and menuconfig. Important areas include processor type, buses, filesystems, networking, and device drivers.
- \begin{lstlisting}[language=bash]
- git clone https://git.kernel.org/pub/scm/linux/kernel/git/stable/linux.git
- cd linux
- make ARCH=arm CROSS_COMPILE=arm-linux-gnueabihf- defconfig
- make ARCH=arm CROSS_COMPILE=arm-linux-gnueabihf- menuconfig
- \end{lstlisting}
- \section{Build and Install}
- Build the kernel, device tree blobs, and modules using cross-compilation.
- \begin{lstlisting}[language=bash]
- make ARCH=arm CROSS_COMPILE=arm-linux-gnueabihf- -j$(nproc) zImage dtbs
- make ARCH=arm CROSS_COMPILE=arm-linux-gnueabihf- modules
- \end{lstlisting}
- \section{Device Tree}
- The device tree describes non-enumerable hardware such as memory, buses, and peripherals. Adjust nodes and properties to match board schematics and verify driver bindings.
- \section{Debugging}
- Use earlyprintk, dynamic debug, and printk levels to inspect boot failures. Enable symbols and compile with debug options to improve observability when using gdb and perf.
+\chapter{Linux Kernel Basics}
+
+\section{Kernel Architecture}
+The Linux kernel is a monolithic kernel that manages hardware resources and provides a system call interface to userspace applications.
+
+\subsection{Key Subsystems}
+\begin{itemize}
+    \item \textbf{Process Scheduler}: Manages CPU time slices.
+    \item \textbf{Memory Management (MM)}: Virtual memory, paging, and slab allocators.
+    \item \textbf{VFS (Virtual Filesystem)}: Abstraction layer for EXT4, FAT, NFS, etc.
+    \item \textbf{Network Stack}: Socket buffers (sk\_buff), protocols (TCP/IP).
+    \item \textbf{Device Drivers}: Interfaces for hardware peripherals.
+\end{itemize}
+
+\section{Kconfig and the Build System}
+The kernel uses \texttt{Kconfig} to define configuration options.
+
+\subsection{Configuration Targets}
+\begin{itemize}
+    \item \texttt{make defconfig}: Loads default options for the architecture.
+    \item \texttt{make menuconfig}: Ncurses-based interactive menu.
+    \item \texttt{make oldconfig}: Updates a .config file for a newer kernel version.
+\end{itemize}
+
+\subsection{Kernel Modules (.ko)}
+Drivers can be compiled as:
+\begin{itemize}
+    \item \textbf{Built-in (y)}: Linked directly into the kernel image (zImage). Always available.
+    \item \textbf{Module (m)}: Compiled as a separate \texttt{.ko} file. Loaded at runtime using \texttt{insmod} or \texttt{modprobe}. Saves memory but requires a rootfs to load from.
+\end{itemize}
+
+\section{Manual Build Procedure}
+While Yocto automates this, understanding the manual steps is mandatory for debugging.
+
+1. \textbf{Setup Environment}:
+\begin{lstlisting}[language=bash]
+export ARCH=arm
+export CROSS_COMPILE=arm-linux-gnueabihf-
+\end{lstlisting}
+
+2. \textbf{Configure}:
+\begin{lstlisting}[language=bash]
+make multi_v7_defconfig
+\end{lstlisting}
+
+3. \textbf{Build Kernel & DTBs}:
+\begin{lstlisting}[language=bash]
+make -j$(nproc) zImage dtbs
+\end{lstlisting}
+Output: \texttt{arch/arm/boot/zImage}, \texttt{arch/arm/boot/dts/*.dtb}
+
+4. \textbf{Build Modules}:
+\begin{lstlisting}[language=bash]
+make modules
+\end{lstlisting}
+
+5. \textbf{Install Modules}:
+Modules must be installed into a directory structure for the target.
+\begin{lstlisting}[language=bash]
+make modules_install INSTALL_MOD_PATH=./target_rootfs
+\end{lstlisting}
+
+\section{Kernel Command Line}
+Passed by the bootloader (U-Boot). Viewed via \texttt{cat /proc/cmdline}.
+Common parameters:
+\begin{itemize}
+    \item \texttt{console=ttyS0,115200}: Serial console configuration.
+    \item \texttt{root=/dev/mmcblk0p2}: Partition to mount as root.
+    \item \texttt{rootwait}: Wait for the storage device to appear before mounting.
+    \item \texttt{init=/bin/sh}: Override init process (useful for rescue).
+\end{itemize}
+
+\section{Hands-On: Hello World Module}
+Writing an out-of-tree kernel module.
+
+1. \texttt{hello.c}:
+\begin{lstlisting}[language=c]
+#include <linux/module.h>
+#include <linux/kernel.h>
+
+static int __init hello_init(void) {
+    printk(KERN_INFO "Hello Kernel!\n");
+    return 0;
+}
+static void __exit hello_exit(void) {
+    printk(KERN_INFO "Goodbye Kernel!\n");
+}
+module_init(hello_init);
+module_exit(hello_exit);
+MODULE_LICENSE("GPL");
+\end{lstlisting}
+
+2. \texttt{Makefile}:
+\begin{lstlisting}[language=make]
+obj-m += hello.o
+all:
+	make -C /path/to/kernel/source M=$(PWD) modules
+clean:
+	make -C /path/to/kernel/source M=$(PWD) clean
+\end{lstlisting}
+
+3. \textbf{Load it}:
+\begin{lstlisting}[language=bash]
+insmod hello.ko
+dmesg | tail
+rmmod hello
+\end{lstlisting}

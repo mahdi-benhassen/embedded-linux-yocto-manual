@@ -1,9 +1,68 @@
- \chapter{Root Filesystem and Init Systems}
- \section{Root Filesystem Components}
- The root filesystem contains init, shells, core utilities, libraries, configuration files, and application artifacts. Common choices include BusyBox for utilities and musl or glibc for libc.
- \section{Init Systems}
- System initialization is managed by init. BusyBox provides a simple init, while systemd offers service management, logging, and dependency handling. Choose based on product needs and footprint.
- \section{Assembly}
- Assemble the rootfs by installing utilities, creating directories, and configuring init. Integrate networking and storage tools appropriate to the platform.
- \section{Hands-On: systemd Boot}
- Enable systemd in kernel options and include systemd packages in the rootfs. Verify with the presence of pid 1 and systemctl output once the system boots.
+\chapter{Root Filesystem and Init Systems}
+
+\section{The Role of Rootfs}
+The Kernel mounts the Root Filesystem (\texttt{/}) to access applications, libraries, and configuration files. It is the first user-space component.
+
+\section{Directory Hierarchy (FHS)}
+Embedded Linux generally follows the Filesystem Hierarchy Standard:
+\begin{itemize}
+    \item \texttt{/bin, /sbin}: Essential binaries (sh, mount, init).
+    \item \texttt{/etc}: System configuration.
+    \item \texttt{/lib}: Kernel modules and shared libraries.
+    \item \texttt{/dev}: Device nodes (populated by devtmpfs).
+    \item \texttt{/proc, /sys}: Virtual filesystems for kernel interface.
+    \item \texttt{/var}: Volatile data (logs, locks).
+\end{itemize}
+
+\section{Init Systems}
+After mounting rootfs, the kernel executes \texttt{/sbin/init} (PID 1).
+
+\subsection{SysVinit (The Classic)}
+\begin{itemize}
+    \item \textbf{Pros}: Simple shell scripts, deterministic, lightweight.
+    \item \textbf{Cons}: Serial execution (slow boot), no supervision (if a service dies, it stays dead).
+    \item \textbf{Config}: \texttt{/etc/inittab}, \texttt{/etc/init.d/}.
+\end{itemize}
+
+\subsection{systemd (The Modern Standard)}
+\begin{itemize}
+    \item \textbf{Pros}: Parallel boot, service supervision, socket activation, powerful logging (journald).
+    \item \textbf{Cons}: Large footprint, complex.
+    \item \textbf{Config}: Unit files in \texttt{/lib/systemd/system/}.
+\end{itemize}
+
+\subsection{BusyBox Init}
+Extremely minimal. Controlled by a single \texttt{/etc/inittab}. Ideal for tiny systems (<16MB storage).
+
+\section{BusyBox: The Swiss Army Knife}
+BusyBox combines hundreds of common utilities (\texttt{ls}, \texttt{cp}, \texttt{sh}, \texttt{mount}) into a single binary.
+\begin{itemize}
+    \item \textbf{Symlinks}: \texttt{/bin/ls} is a symlink to \texttt{/bin/busybox}.
+    \item \textbf{Size}: < 1MB typically.
+    \item \textbf{Config}: \texttt{make menuconfig} to select enabled applets.
+\end{itemize}
+
+\section{Pseudo-Filesystems}
+These are critical for system operation:
+\begin{itemize}
+    \item \textbf{/proc}: Process information. \texttt{mount -t proc none /proc}
+    \item \textbf{/sys}: Kernel object model (drivers/devices). \texttt{mount -t sysfs none /sys}
+    \item \textbf{/dev}: Device nodes. Managed by \texttt{devtmpfs} (kernel) and \texttt{udev/mdev} (userspace).
+\end{itemize}
+
+\section{Hands-On: Switching Init Systems in Yocto}
+In \texttt{local.conf}, you can switch between SysVinit and systemd easily.
+
+\textbf{For systemd}:
+\begin{lstlisting}
+DISTRO_FEATURES:append = " systemd"
+VIRTUAL-RUNTIME_init_manager = "systemd"
+DISTRO_FEATURES_BACKFILL_CONSIDERED = "sysvinit"
+\end{lstlisting}
+
+\textbf{For SysVinit}:
+\begin{lstlisting}
+DISTRO_FEATURES:append = " sysvinit"
+DISTRO_FEATURES:remove = "systemd"
+VIRTUAL-RUNTIME_init_manager = "sysvinit"
+\end{lstlisting}
