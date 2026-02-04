@@ -1,78 +1,99 @@
- \documentclass[12pt,twoside,openright]{book}
- \usepackage[T1]{fontenc}
- \usepackage[utf8]{inputenc}
- \usepackage{lmodern}
- \usepackage{microtype}
- \usepackage{geometry}
- \geometry{a4paper,inner=30mm,outer=25mm,top=25mm,bottom=30mm,bindingoffset=10mm}
- \usepackage{xcolor}
- \usepackage{graphicx}
- \usepackage{caption}
- \usepackage{listings}
- \lstdefinestyle{code}{
-   backgroundcolor=\color{black!2},
-   basicstyle=\ttfamily\small,
-   frame=single,
-   rulecolor=\color{black!20},
-   keywordstyle=\color{blue},
-   commentstyle=\color{gray},
-   stringstyle=\color{teal},
-   numbers=left,
-   numberstyle=\tiny\color{gray},
-   stepnumber=1,
-   numbersep=8pt,
-   breaklines=true,
-   showstringspaces=false,
-   upquote=true
- }
- \lstset{style=code}
- \usepackage[colorlinks=true,linkcolor=blue,citecolor=blue,urlcolor=blue]{hyperref}
- \usepackage{bookmark}
- \usepackage{fancyhdr}
- \pagestyle{fancy}
- \fancyhf{}
- \renewcommand{\chaptermark}[1]{\markboth{\thechapter\ #1}{}}
- \renewcommand{\sectionmark}[1]{\markright{\thesection\ #1}}
- \fancyhead[LE]{\nouppercase{\leftmark}}
- \fancyhead[RO]{\nouppercase{\rightmark}}
- \fancyfoot[LE,RO]{\thepage}
- \setlength{\headheight}{15pt}
- \usepackage[Bjarne]{fncychap}
- \setcounter{tocdepth}{2}
- \setcounter{secnumdepth}{3}
- \graphicspath{{figures/}}
- \raggedbottom
- \title{Embedded Linux and Yocto Project Reference Manual}
- \author{Engineering Team}
- \date{\today}
- \begin{document}
- \frontmatter
- \maketitle
- \cleardoublepage
- \thispagestyle{empty}
- \begin{center}
- Copyright \textcopyright\ \the\year
- \end{center}
- \cleardoublepage
- \tableofcontents
- \cleardoublepage
- \lstlistoflistings
- \mainmatter
- \include{chapters/chapter01}
- \include{chapters/chapter02}
- \include{chapters/chapter03}
- \include{chapters/chapter04}
- \include{chapters/chapter05}
- \include{chapters/chapter06}
- \include{chapters/chapter07}
- \include{chapters/chapter08}
- \include{chapters/chapter09}
- \include{chapters/chapter10}
- \include{chapters/chapter11}
- \include{chapters/chapter12}
- \include{chapters/chapter13}
- \include{chapters/chapter14}
- \include{chapters/chapter15}
- \include{chapters/chapter16}
- \backmatter
- \end{document}
+\documentclass[12pt,twoside,openright]{book}
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage{lmodern}
+\usepackage[final]{microtype} % Enable final to ensure microtype works in all modes
+\usepackage{geometry}
+\geometry{a4paper,inner=30mm,outer=25mm,top=25mm,bottom=30mm,bindingoffset=10mm}
+\usepackage{xcolor}
+\usepackage{graphicx}
+\usepackage{caption}
+\usepackage{listings}
+\usepackage{textcomp} % Required for upquote
+\lstdefinestyle{code}{
+  backgroundcolor=\color{black!2},
+  basicstyle=\ttfamily\small,
+  frame=single,
+  rulecolor=\color{black!20},
+  keywordstyle=\color{blue},
+  commentstyle=\color{gray},
+  stringstyle=\color{teal},
+  numbers=left,
+  numberstyle=\tiny\color{gray},
+  stepnumber=1,
+  numbersep=8pt,
+  breaklines=true,
+  breakatwhitespace=true, % Helps with overfull lines in code
+  showstringspaces=false,
+  upquote=true,
+  literate={-}{-}1 % Prevent hyphens from becoming dashes in code
+}
+\lstset{style=code}
+
+% Define YAML language if missing (listings doesn't always have it)
+\lstdefinelanguage{yaml}{
+  keywords={true,false,null,y,n},
+  keywordstyle=\color{blue},
+  basicstyle=\ttfamily\small,
+  sensitive=false,
+  comment=[l]{\#},
+  commentstyle=\color{gray},
+  stringstyle=\color{teal},
+  morestring=[b]',
+  morestring=[b]"
+}
+
+\usepackage[colorlinks=true,linkcolor=blue,citecolor=blue,urlcolor=blue]{hyperref}
+\usepackage{bookmark}
+\usepackage{fancyhdr}
+\pagestyle{fancy}
+\fancyhf{}
+\renewcommand{\chaptermark}[1]{\markboth{\thechapter\ #1}{}}
+\renewcommand{\sectionmark}[1]{\markright{\thesection\ #1}}
+\fancyhead[LE]{\nouppercase{\leftmark}}
+\fancyhead[RO]{\nouppercase{\rightmark}}
+\fancyfoot[LE,RO]{\thepage}
+\setlength{\headheight}{15pt}
+\usepackage[Bjarne]{fncychap}
+\setcounter{tocdepth}{2}
+\setcounter{secnumdepth}{3}
+\graphicspath{{figures/}}
+\raggedbottom
+
+% Prevent overfull hboxes in text
+\setlength{\emergencystretch}{3em} 
+
+\title{Embedded Linux and Yocto Project Reference Manual}
+\author{Engineering Team}
+\date{\today}
+\begin{document}
+\frontmatter
+\maketitle
+\cleardoublepage
+\thispagestyle{empty}
+\begin{center}
+Copyright \textcopyright\ \the\year
+\end{center}
+\cleardoublepage
+\tableofcontents
+\cleardoublepage
+\lstlistoflistings
+\mainmatter
+\include{chapters/chapter01}
+\include{chapters/chapter02}
+\include{chapters/chapter03}
+\include{chapters/chapter04}
+\include{chapters/chapter05}
+\include{chapters/chapter06}
+\include{chapters/chapter07}
+\include{chapters/chapter08}
+\include{chapters/chapter09}
+\include{chapters/chapter10}
+\include{chapters/chapter11}
+\include{chapters/chapter12}
+\include{chapters/chapter13}
+\include{chapters/chapter14}
+\include{chapters/chapter15}
+\include{chapters/chapter16}
+\backmatter
+\end{document}
