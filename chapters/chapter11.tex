@@ -1,6 +1,6 @@
  \chapter{BitBake and Recipes}
  \section{Recipe Structure}
- A recipe declares metadata including description, license, SRC_URI for fetching sources, and tasks like do_compile and do_install. Variables control build flags and dependencies.
+A recipe declares metadata including description, license, \texttt{SRC\_URI} for fetching sources, and tasks like \texttt{do\_compile} and \texttt{do\_install}. Variables control build flags and dependencies.
  \section{Hands-On: Simple Recipe}
  Create a layer and add a recipe to build a hello application.
  \begin{lstlisting}[language=bash]
@@ -33,4 +33,4 @@
  \section{Tasks and Dependencies}
  BitBake creates a task graph with dependencies between recipes. Use bitbake -g to generate graphs and inspect task ordering and shared state reuse.
  \section{Packaging}
- Enable packaging into rpm, deb, or ipk and ensure the do_package task creates correct file lists and dependencies.
+Enable packaging into rpm, deb, or ipk and ensure the \texttt{do\_package} task creates correct file lists and dependencies.

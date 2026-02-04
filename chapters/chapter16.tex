@@ -1,6 +1,6 @@
  \chapter{Reproducibility, CI, and Release}
  \section{State and Mirrors}
- Control DL_DIR and SSTATE_DIR to cache downloads and shared state. Use sstate mirrors to accelerate rebuilds and ensure consistent artifacts across development machines and CI nodes.
+Control \texttt{DL\_DIR} and \texttt{SSTATE\_DIR} to cache downloads and shared state. Use sstate mirrors to accelerate rebuilds and ensure consistent artifacts across development machines and CI nodes.
  \section{Reproducible Builds}
  Pin layers and branches, use fixed SRCREV values for git sources, and avoid floating dependencies. Record build metadata and manifests to support repeat runs and auditing.
  \section{Licensing}

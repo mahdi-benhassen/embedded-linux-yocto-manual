@@ -2,7 +2,7 @@
  \section{Layer Design}
  Organize metadata by functionality and hardware. Keep BSP, distro configuration, and application recipes in separate layers. Use priority and compatibility fields to control overrides.
  \section{Configuration}
- Customize local.conf for parallelism, DL_DIR, SSTATE_DIR, and MACHINE. Configure DISTRO features and IMAGE features to include services and packages.
+Customize local.conf for parallelism, \texttt{DL\_DIR}, \texttt{SSTATE\_DIR}, and MACHINE. Configure DISTRO features and IMAGE features to include services and packages.
  \section{bbappend}
  Use .bbappend files to modify upstream recipes without forking. Override variables, add patches, or adjust tasks. Ensure layer priority allows the intended override.
  \section{Hands-On: Custom Image}
