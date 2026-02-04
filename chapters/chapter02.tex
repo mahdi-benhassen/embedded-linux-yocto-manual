@@ -1,51 +1,78 @@
- \chapter{Development Environment Setup}
- \section{Host Requirements}
- A reliable host environment is required for cross-compilation and image creation. Use a recent Linux distribution with git, gcc, g++, make, python3, rsync, tar, gzip, bzip2, cpio, and qemu. Windows hosts can use WSL2 with an Ubuntu distribution.
- \section{Core Tools}
- Install git, compilers, and QEMU. The following commands target Debian-based systems.
- \begin{lstlisting}[language=bash]
- sudo apt update
- sudo apt install -y build-essential git python3 python3-pip \
-   qemu-system-arm qemu-system-aarch64 qemu-system-x86 \
-   cpio rsync bzip2 gzip unzip tar
- \end{lstlisting}
- \section{Version Control}
- Configure your identity and a clean workflow for embedded projects.
- \begin{lstlisting}[language=bash]
- git config --global user.name "Engineer"
- git config --global user.email "engineer@example.com"
- git config --global pull.rebase true
- git config --global init.defaultBranch main
- \end{lstlisting}
- \section{Serial and Networking}
- Interact with boards using serial consoles and SSH. On Linux, connect with tools like screen or picocom. Use DHCP or static IP for networking. Confirm connectivity with ping and ssh.
- \begin{lstlisting}[language=bash]
- sudo apt install -y screen picocom openssh-client
- screen /dev/ttyUSB0 115200
- ssh user@board-ip
- \end{lstlisting}
- \section{Editors and Build Integration}
- Use an extensible editor with support for cross-development. Pair an editor such as VS Code with remote SSH to edit files on target boards during debug. Integrate terminals for build, deployment, and flashing workflows.
- \section{Hands-On: QEMU Sanity Boot}
- Verify the environment by booting a prebuilt kernel and initramfs under QEMU.
- \begin{lstlisting}[language=bash]
- wget https://busybox.net/downloads/binaries/1.36.1-i686/busybox
- chmod +x busybox
- mkdir -p ~/devsetup/initramfs/bin
- cp busybox ~/devsetup/initramfs/bin
- cd ~/devsetup/initramfs
- ln -s bin/busybox sh
- echo '#!/bin/sh' > init
- echo 'mount -t proc none /proc' >> init
- echo 'mount -t sysfs none /sys' >> init
- echo 'echo "Environment OK"' >> init
- echo '/bin/sh' >> init
- chmod +x init
- find . | cpio -H newc -o | gzip > ../initramfs.cpio.gz
- \end{lstlisting}
- Launch QEMU with a valid kernel image and the generated initramfs.
- \begin{lstlisting}[language=bash]
- qemu-system-arm -M virt -cpu cortex-a9 -m 256M -nographic \
-   -kernel path/to/zImage -initrd ~/devsetup/initramfs.cpio.gz \
-   -append "console=ttyAMA0"
- \end{lstlisting}
+\chapter{Development Environment Setup}
+
+\section{Host Requirements}
+Embedded development requires a powerful Linux host.
+\begin{itemize}
+    \item \textbf{OS}: Ubuntu 20.04 or 22.04 LTS (64-bit).
+    \item \textbf{RAM}: 16GB minimum (32GB recommended for Yocto).
+    \item \textbf{Storage}: 100GB+ SSD (Builds are massive).
+\end{itemize}
+
+\section{Docker: The Modern Way}
+Instead of installing dependencies directly on your host (and breaking them when you upgrade Ubuntu), use Docker containers. This ensures every developer on your team uses the \emph{exact} same environment.
+
+\subsection{Setting up a Yocto Container}
+1. Install Docker on your host.
+2. Run a container with the required dependencies (e.g., CROPS):
+\begin{lstlisting}[language=bash]
+docker run --rm -it -v $(pwd):/workdir crops/poky:ubuntu-22.04
+\end{lstlisting}
+
+\section{Connectivity Tools}
+You need to talk to the board.
+
+\subsection{Serial Console (UART)}
+The lifeline of embedded debugging.
+\begin{itemize}
+    \item \textbf{picocom}: Simple, no-nonsense.
+    \begin{lstlisting}[language=bash]
+picocom -b 115200 /dev/ttyUSB0
+    \end{lstlisting}
+    \item \textbf{screen}: The classic. To exit: \texttt{Ctrl+A, K}.
+    \item \textbf{Permissions}: Add your user to the \texttt{dialout} group.
+    \begin{lstlisting}[language=bash]
+sudo usermod -aG dialout $USER
+    \end{lstlisting}
+\end{itemize}
+
+\subsection{Network Boot Servers}
+For rapid kernel/rootfs iteration, avoid flashing SD cards. Boot over the network.
+
+\textbf{TFTP (For Kernel/DTB)}:
+\begin{lstlisting}[language=bash]
+sudo apt install tftpd-hpa
+# Edit /etc/default/tftpd-hpa
+TFTP_DIRECTORY="/srv/tftp"
+# Restart
+sudo systemctl restart tftpd-hpa
+\end{lstlisting}
+
+\textbf{NFS (For Rootfs)}:
+\begin{lstlisting}[language=bash]
+sudo apt install nfs-kernel-server
+# Edit /etc/exports
+/srv/nfs/rootfs *(rw,sync,no_root_squash,no_subtree_check)
+# Restart
+sudo systemctl restart nfs-kernel-server
+\end{lstlisting}
+
+\section{IDE Setup: VS Code}
+Visual Studio Code is excellent for embedded Linux.
+
+\subsection{Remote Development}
+1. Install the "Remote - SSH" extension.
+2. Connect to your build server (or even the target board if it has SSH!).
+3. Edit files directly on the remote machine without syncing.
+
+\subsection{IntelliSense for C/C++}
+To get code completion for kernel or application code:
+1. Generate a \texttt{compile\_commands.json} (using CMake or BitBake).
+2. Point the C/C++ extension to it.
+3. Add your toolchain's include paths to \texttt{c_cpp_properties.json}.
+
+\section{Version Control (Git)}
+\begin{itemize}
+    \item \textbf{Atomic Commits}: One feature/fix per commit.
+    \item \textbf{Messages}: "Subject line (50 chars)" + "Body (72 chars wrap)".
+    \item \textbf{Sign-offs}: Use \texttt{git commit -s} to add `Signed-off-by`. This is mandatory for contributing to the Linux Kernel or Yocto.
+\end{itemize}
