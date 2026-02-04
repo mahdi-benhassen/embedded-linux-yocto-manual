@@ -1,9 +1,80 @@
- \chapter{Kernel and BSP with Yocto}
- \section{Kernel Recipes}
-Use linux-yocto or vendor kernel recipes to build and deploy the kernel and device trees. Configure \texttt{KERNEL\_FEATURES} and fragments to control options and patches.
- \section{BSP Layers}
- BSP layers provide machine configuration, bootloader recipes, kernel configuration, and device trees. Align MACHINE with the intended board and ensure compatibility with your Yocto release.
- \section{Hands-On: Device Tree Override}
- Add a .bbappend to inject a device tree overlay or modified dts into the kernel recipe. Rebuild and verify the updated device tree is deployed in the image.
- \section{Firmware}
- Package firmware blobs and ensure they are included by the image and accessible to drivers through standard paths such as /lib/firmware.
+\chapter{Kernel and BSP with Yocto}
+
+\section{Building the Kernel}
+Yocto provides the \texttt{kernel} class to handle building Linux. The standard recipe is \texttt{linux-yocto}, but most BSPs provide their own (e.g., \texttt{linux-raspberrypi}, \texttt{linux-imx}).
+
+\section{Kernel Configuration}
+Do \textbf{not} just run \texttt{menuconfig}, save the \texttt{.config}, and check it into git. That is hard to maintain. Instead, use \textbf{Configuration Fragments}.
+
+\subsection{Using Fragments (.cfg)}
+A fragment contains only the \emph{changes} from the default configuration.
+1. Create \texttt{files/wifi.cfg}:
+\begin{lstlisting}
+CONFIG_WLAN=y
+CONFIG_IWlwifi=m
+\end{lstlisting}
+
+2. Add it to the kernel recipe via \texttt{.bbappend}:
+\begin{lstlisting}
+SRC_URI += "file://wifi.cfg"
+\end{lstlisting}
+
+\subsection{Running Menuconfig}
+To inspect or create config changes:
+\begin{lstlisting}[language=bash]
+bitbake -c menuconfig virtual/kernel
+\end{lstlisting}
+After saving, run:
+\begin{lstlisting}[language=bash]
+bitbake -c diffconfig virtual/kernel
+\end{lstlisting}
+This outputs a \texttt{fragment.cfg} containing only your changes.
+
+\section{Device Tree Management}
+The Device Tree (DT) describes the hardware.
+
+\subsection{Specifying DTB in Recipe}
+Set the \texttt{KERNEL\_DEVICETREE} variable in your machine config or local.conf:
+\begin{lstlisting}
+KERNEL_DEVICETREE = "am335x-boneblack.dtb"
+\end{lstlisting}
+
+\subsection{Device Tree Overlays}
+Overlays modify the DT at runtime (e.g., for a HAT or cape).
+To add an overlay source (\texttt{.dts}) to the compilation:
+1. Add it to \texttt{SRC\_URI}.
+2. Ensure it compiles to \texttt{.dtbo}.
+
+\section{Creating a BSP Layer}
+A Board Support Package (BSP) layer contains machine configurations.
+
+\subsection{Structure}
+\begin{itemize}
+    \item \texttt{meta-myboard/conf/machine/myboard.conf}: The machine definition.
+    \item \texttt{meta-myboard/recipes-kernel/linux/}: Kernel recipes.
+    \item \texttt{meta-myboard/recipes-bsp/u-boot/}: Bootloader recipes.
+\end{itemize}
+
+\subsection{Machine Configuration Example}
+\texttt{conf/machine/myboard.conf}:
+\begin{lstlisting}
+require conf/machine/include/soc-family.inc
+
+PREFERRED_PROVIDER_virtual/kernel = "linux-myboard"
+PREFERRED_PROVIDER_virtual/bootloader = "u-boot-myboard"
+
+MACHINE_FEATURES = "ext2 serial usbhost vfat wifi"
+
+KERNEL_IMAGETYPE = "zImage"
+KERNEL_DEVICETREE = "myboard.dtb"
+
+SERIAL_CONSOLES = "115200;ttyS0"
+\end{lstlisting}
+
+\section{Firmware Loading}
+Many drivers require binary firmware (WiFi, GPU).
+1. Add \texttt{linux-firmware} to your image.
+2. If the firmware is proprietary, create a recipe that installs the \texttt{.bin} file to \texttt{/lib/firmware}.
+\begin{lstlisting}
+FILES:${PN} += "/lib/firmware/my-device.bin"
+\end{lstlisting}

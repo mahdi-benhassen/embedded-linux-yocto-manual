@@ -1,18 +1,72 @@
- \chapter{SDK, Devtool, and Workflow}
- \section{SDK}
- Yocto can generate an extensible SDK for cross-building applications outside the core build. Install the SDK and source the environment to obtain compilers and the target sysroot.
- \begin{lstlisting}[language=bash]
- bitbake core-image-base -c populate_sdk
- sh tmp/deploy/sdk/poky-glibc-x86_64-core-image-base-armv7a-toolchain.sh
- source /opt/poky/3.1/environment-setup-armv7a-poky-linux-gnueabi
- \end{lstlisting}
- \section{devtool}
- Use devtool to add, modify, and test recipes. It can set up a workspace, patch sources, and rebuild incrementally.
- \begin{lstlisting}[language=bash]
- source oe-init-build-env
- devtool add hello https://example.com/hello.git
- devtool build hello
- devtool deploy-target hello user@board-ip
- \end{lstlisting}
- \section{Workflow}
- Develop iteratively with devtool and integrate changes into layers once the application stabilizes. Export patches and update recipes accordingly for long-term maintenance.
+\chapter{SDK, Devtool, and Workflow}
+
+\section{The Application Development Workflow}
+Building the entire OS (\texttt{bitbake}) is slow. Application developers should use one of two faster methods:
+\begin{enumerate}
+    \item \textbf{Standard SDK}: A standalone installer containing the cross-toolchain and sysroot.
+    \item \textbf{Extensible SDK (eSDK)}: A portable copy of the build system (limited to specific targets).
+    \item \textbf{Devtool}: A command-line tool that works directly on the build system to iterate on recipes.
+\end{enumerate}
+
+\section{Generating and Using the Standard SDK}
+The Standard SDK is immutable. It is perfect for handing off to an app team.
+
+\subsection{Generation}
+\begin{lstlisting}[language=bash]
+bitbake -c populate_sdk core-image-minimal
+\end{lstlisting}
+The installer is written to \texttt{tmp/deploy/sdk/}.
+
+\subsection{Installation}
+Run the script:
+\begin{lstlisting}[language=bash]
+./poky-glibc-x86_64-core-image-minimal-cortexa8hf-neon-toolchain-4.0.1.sh
+\end{lstlisting}
+Default install path: \texttt{/opt/poky/4.0.1/}.
+
+\subsection{Usage}
+Source the environment file before running your build tools (Make, CMake, etc.):
+\begin{lstlisting}[language=bash]
+source /opt/poky/4.0.1/environment-setup-cortexa8hf-neon-poky-linux-gnueabi
+$CC main.c -o main
+\end{lstlisting}
+
+\section{The Devtool Workflow}
+\texttt{devtool} allows you to modify source code and rebuild it without creating a recipe from scratch manually.
+
+\subsection{1. Add a New Application}
+\begin{lstlisting}[language=bash]
+devtool add myapp https://github.com/user/myapp.git
+\end{lstlisting}
+This creates a \texttt{workspace/recipes/myapp/myapp.bb} and downloads the source to \texttt{workspace/sources/myapp/}.
+
+\subsection{2. Modify and Build}
+Go to the source directory, edit files, and build:
+\begin{lstlisting}[language=bash]
+cd workspace/sources/myapp
+# Edit main.c...
+devtool build myapp
+\end{lstlisting}
+
+\subsection{3. Deploy to Target}
+Push the binary to your running board (via SSH):
+\begin{lstlisting}[language=bash]
+devtool deploy-target myapp root@192.168.1.50
+\end{lstlisting}
+
+\subsection{4. Finish (Promote to Layer)}
+Once you are happy, move the recipe from the workspace to your real layer:
+\begin{lstlisting}[language=bash]
+devtool finish myapp ../meta-custom
+\end{lstlisting}
+This deletes the workspace entry and creates the recipe and patch files in \texttt{meta-custom}.
+
+\section{IDE Integration}
+You can use the SDK with VS Code.
+1. Install the "C/C++" extension.
+2. Source the SDK environment.
+3. Launch VS Code from that terminal:
+\begin{lstlisting}[language=bash]
+code .
+\end{lstlisting}
+4. Configure \texttt{c_cpp_properties.json} to point to the SDK sysroot include paths.

@@ -1,30 +1,99 @@
- \chapter{Cross-Compilation and Toolchains}
- \section{Concepts}
- Cross-compilation uses a compiler running on the host to produce binaries for a different target architecture. A toolchain provides compiler, linker, binutils, libc, headers, and optional debugging tools for the target.
- \section{Obtaining a Toolchain}
- Use a distribution-provided cross-toolchain or generate one with crosstool-NG or the Yocto Project. Yocto can export a Software Development Kit containing cross-compilers and target sysroot.
- \section{Hello World Cross-Build}
- Create and build a simple program for an ARM target using a cross-compiler.
- \begin{lstlisting}[language=bash]
- mkdir -p ~/toolchains/hello
- cd ~/toolchains/hello
- cat > hello.c << 'EOF'
- #include <stdio.h>
- int main() { printf("Hello, ARM\\n"); return 0; }
- EOF
- arm-linux-gnueabihf-gcc hello.c -o hello
- file hello
- \end{lstlisting}
- Transfer the binary to the target and execute it.
- \begin{lstlisting}[language=bash]
- scp hello user@board-ip:/tmp
- ssh user@board-ip /tmp/hello
- \end{lstlisting}
- \section{Sysroot and Headers}
- The sysroot contains headers and libraries matching the target root filesystem. Ensure your cross-compiler links against the correct libc and uses the target headers for ABI compatibility. Use pkg-config with a target-specific prefix to find libraries.
- \section{Build Systems}
- Employ build systems like CMake and Meson for larger projects. Configure them to use a toolchain file specifying compilers, sysroot, and target architecture.
- \begin{lstlisting}[language=bash]
- cmake -DCMAKE_TOOLCHAIN_FILE=toolchain-armhf.cmake -S . -B build
- cmake --build build -j$(nproc)
- \end{lstlisting}
+\chapter{Cross-Compilation and Toolchains}
+
+\section{The Anatomy of a Toolchain}
+A toolchain is not just a compiler. It is a suite of tools that work together to translate source code into executable binaries for a specific target architecture.
+
+\subsection{Key Components}
+\begin{description}
+    \item[Binutils] The foundational binary tools:
+    \begin{itemize}
+        \item \texttt{as}: Assembler.
+        \item \texttt{ld}: Linker.
+        \item \texttt{objcopy}: Converts object files (e.g., ELF to binary).
+        \item \texttt{objdump}: Disassembler and information tool.
+        \item \texttt{strip}: Removes debug symbols to reduce size.
+    \end{itemize}
+    \item[GCC (GNU Compiler Collection)] The core compiler that translates C/C++ to assembly.
+    \item[C Library (libc)] The interface between the application and the kernel.
+    \begin{itemize}
+        \item \textbf{glibc}: Standard GNU libc. Full-featured, supports all standards, but larger footprint.
+        \item \textbf{musl}: Lightweight, efficient, standard-compliant. Great for static linking and small systems.
+    \end{itemize}
+    \item[Kernel Headers] API definitions (structs, constants) for system calls. These must match (or be older than) the running kernel on the target.
+\end{description}
+
+\section{Tuple Naming Convention}
+Cross-compilers follow a naming tuple to avoid confusion with the host compiler:
+\texttt{arch-vendor-os-abi}
+
+Examples:
+\begin{itemize}
+    \item \texttt{arm-none-eabi-gcc}: ARM architecture, bare-metal (no OS), embedded ABI.
+    \item \texttt{aarch64-poky-linux-gcc}: 64-bit ARM, Yocto (Poky) vendor, Linux OS.
+    \item \texttt{x86\_64-w64-mingw32-gcc}: 64-bit Intel, Windows target (MinGW).
+\end{itemize}
+
+\section{Sysroots}
+The \textbf{sysroot} is a logical directory acting as the root filesystem for the compiler. It contains:
+\begin{itemize}
+    \item \texttt{/usr/include}: Header files for libraries.
+    \item \texttt{/usr/lib}: Shared objects (.so) and static libraries (.a).
+\end{itemize}
+When cross-compiling, you \textbf{must} point the compiler to the target sysroot, or it will try to link against your host's (x86) libraries, resulting in format errors.
+
+\begin{lstlisting}[language=bash]
+# Example of explicit sysroot usage
+aarch64-linux-gcc --sysroot=/path/to/sysroot main.c -o main
+\end{lstlisting}
+
+\section{Dynamic vs. Static Linking}
+\subsection{Dynamic Linking}
+The default behavior. The binary contains a reference to the interpreter (\texttt{ld-linux.so}) and shared libraries.
+\begin{itemize}
+    \item \textbf{Pros}: Smaller binary size; memory sharing between processes; easy library updates.
+    \item \textbf{Cons}: Runtime dependency hell; requires libraries on target.
+\end{itemize}
+
+\subsection{Static Linking}
+All library code is copied into the executable.
+\begin{lstlisting}[language=bash]
+gcc -static main.c -o main
+\end{lstlisting}
+\begin{itemize}
+    \item \textbf{Pros}: Zero dependencies; runs anywhere (kernel compatible).
+    \item \textbf{Cons}: Large binaries; no security updates for libraries without recompiling the app.
+\end{itemize}
+
+\section{ABI (Application Binary Interface)}
+The ABI defines how functions are called at the assembly level (register usage, stack alignment).
+\begin{itemize}
+    \item \textbf{Soft Float}: Floating point operations are emulated in software (slow, compatible).
+    \item \textbf{Hard Float}: Uses the FPU hardware instructions (fast).
+\end{itemize}
+\textbf{Critical}: You cannot mix soft-float and hard-float binaries in the same process space.
+
+\section{Hands-On: Manual Toolchain Usage}
+We will verify ABI compatibility using \texttt{readelf}.
+
+1. Create a dummy C program:
+\begin{lstlisting}[language=c]
+// test.c
+int main() { return 0; }
+\end{lstlisting}
+
+2. Compile it:
+\begin{lstlisting}[language=bash]
+$CC test.c -o test_binary
+\end{lstlisting}
+
+3. Inspect the program interpreter:
+\begin{lstlisting}[language=bash]
+readelf -l test_binary | grep interpreter
+# Output: Requesting program interpreter: [/lib/ld-linux-armhf.so.3]
+\end{lstlisting}
+
+4. Check needed libraries:
+\begin{lstlisting}[language=bash]
+readelf -d test_binary | grep NEEDED
+# Output: Shared library: [libc.so.6]
+\end{lstlisting}

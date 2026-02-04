@@ -1,25 +1,79 @@
- \chapter{Boot Process and Bootloaders}
- \section{Overview}
- The boot process initializes hardware, loads the kernel, and transfers control. In embedded Linux, popular bootloaders include U-Boot and Barebox. They provide command-line access, device initialization, and boot scripting.
- \section{U-Boot Stages}
- U-Boot typically comprises a first-stage loader and the main U-Boot binary. The ROM loads the first stage, which configures memory and loads U-Boot. U-Boot then loads the kernel and device tree and passes boot arguments.
- \section{Hands-On: U-Boot in QEMU}
- Build U-Boot for an ARM virt machine and boot a kernel with a device tree.
- \begin{lstlisting}[language=bash]
- git clone https://source.denx.de/u-boot/u-boot.git
- cd u-boot
- make qemu_arm_defconfig
- make -j$(nproc)
- \end{lstlisting}
- Launch QEMU using the built U-Boot and provide kernel and device tree images.
- \begin{lstlisting}[language=bash]
- qemu-system-arm -M virt -cpu cortex-a9 -m 512M -nographic \
-   -bios u-boot.bin \
-   -kernel path/to/zImage \
-   -dtb path/to/virt.dtb \
-   -append "console=ttyAMA0 root=/dev/ram0"
- \end{lstlisting}
- \section{Boot Arguments}
- Kernel command-line parameters configure consoles, root filesystem, networking, and init. Adjust boot arguments to debug early boot, select initramfs, or mount storage devices.
- \section{Flashing and Storage}
- Deploy bootloader and kernel images to eMMC, SD, SPI-NOR, or NAND depending on your hardware. Use verified update procedures with checksums and rollback when possible.
+\chapter{Boot Process and Bootloaders}
+
+\section{The Boot Chain}
+The "Boot Chain" is the sequence of software that runs from power-on until the user login prompt.
+\begin{enumerate}
+    \item \textbf{ROM Code}: Hardcoded silicon logic. Initializes minimal SRAM and loads the SPL.
+    \item \textbf{SPL (Secondary Program Loader)}: A small bootloader (often part of U-Boot) that fits in SRAM. Initializes DRAM and loads U-Boot Proper.
+    \item \textbf{U-Boot Proper}: The full bootloader. Features a command line, networking, and filesystem support. Loads the Kernel.
+    \item \textbf{Linux Kernel}: Initializes hardware, mounts rootfs, and runs \texttt{init}.
+    \item \textbf{User Space}: \texttt{systemd} or \texttt{SysVinit} starts services.
+\end{enumerate}
+
+\section{U-Boot Anatomy}
+U-Boot (Universal Bootloader) is the industry standard.
+
+\subsection{Environment Variables}
+Stored in non-volatile memory (e.g., SPI Flash, eMMC partition). Key variables:
+\begin{itemize}
+    \item \texttt{bootcmd}: The script automatically executed at boot.
+    \item \texttt{bootargs}: Arguments passed to the Linux kernel.
+    \item \texttt{serverip} \& \texttt{ipaddr}: Network settings for TFTP booting.
+\end{itemize}
+
+\subsection{Important Commands}
+\begin{itemize}
+    \item \texttt{printenv}: Show variables.
+    \item \texttt{setenv <var> <val>}: Set variable (in RAM).
+    \item \texttt{saveenv}: Persist variables to storage.
+    \item \texttt{tftp <addr> <file>}: Download file via network.
+    \item \texttt{fatload mmc 0:1 <addr> <file>}: Load file from SD card (partition 1).
+    \item \texttt{bootz <zImage> <initrd> <dtb>}: Boot zImage kernel.
+\end{itemize}
+
+\section{Boot Scripts (boot.scr)}
+Hardcoding long commands in \texttt{bootcmd} is fragile. Use a \texttt{boot.scr} script.
+
+1. Write a text file \texttt{boot.cmd}:
+\begin{lstlisting}[language=bash]
+echo "Booting from SD card..."
+setenv bootargs console=ttyS0,115200 root=/dev/mmcblk0p2 rw rootwait
+fatload mmc 0:1 ${kernel_addr_r} zImage
+fatload mmc 0:1 ${fdt_addr_r} board.dtb
+bootz ${kernel_addr_r} - ${fdt_addr_r}
+\end{lstlisting}
+
+2. Compile it using \texttt{mkimage}:
+\begin{lstlisting}[language=bash]
+mkimage -C none -A arm -T script -d boot.cmd boot.scr
+\end{lstlisting}
+
+\section{FIT Images (Flattened Image Tree)}
+A FIT image combines Kernel, Device Trees, and Initramfs into a single signed binary. It enables:
+\begin{itemize}
+    \item \textbf{Verified Boot}: U-Boot checks cryptographic signatures before booting.
+    \item \textbf{Multiple Configs}: One image can support multiple boards by selecting the correct DTB automatically.
+\end{itemize}
+
+\section{Hands-On: U-Boot Network Boot (TFTP/NFS)}
+A "network boot" is essential for rapid development. The kernel is loaded via TFTP, and the rootfs is mounted via NFS.
+
+\subsection{1. Host Setup}
+Install TFTP and NFS servers:
+\begin{lstlisting}[language=bash]
+sudo apt install tftpd-hpa nfs-kernel-server
+\end{lstlisting}
+Configure \texttt{/srv/tftp} and \texttt{/srv/nfs}.
+
+\subsection{2. U-Boot Configuration}
+Interrupt U-Boot and run:
+\begin{lstlisting}[language=bash]
+setenv serverip 192.168.1.10
+setenv ipaddr 192.168.1.50
+setenv nfsroot /srv/nfs/rootfs
+setenv bootargs console=ttyS0,115200 root=/dev/nfs nfsroot=${serverip}:${nfsroot},v3,tcp ip=${ipaddr}
+tftp ${kernel_addr_r} zImage
+tftp ${fdt_addr_r} board.dtb
+bootz ${kernel_addr_r} - ${fdt_addr_r}
+\end{lstlisting}
+This bypasses the slow SD card flashing process entirely!

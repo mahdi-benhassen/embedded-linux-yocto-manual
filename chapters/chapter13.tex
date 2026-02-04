@@ -1,23 +1,101 @@
- \chapter{Building Applications with Yocto}
- \section{Build Systems}
- Yocto supports autotools, CMake, and Meson through classes. Select the appropriate class and set variables to locate sources and control configuration options.
- \section{CMake Example}
- Write a recipe that inherits cmake and installs a binary to bindir.
- \begin{lstlisting}[language=bash]
- cat > ../meta-hello/recipes-example/cmake-hello/cmake-hello.bb << 'EOF'
- SUMMARY = "CMake hello"
- LICENSE = "MIT"
- LIC_FILES_CHKSUM = "file://LICENSE;md5=3b83ef96387f14655fc854ddc3c6bd57"
- SRC_URI = "git://example.com/cmake-hello.git;branch=main"
- S = "${WORKDIR}/git"
- inherit cmake
- do_install() {
-     install -d ${D}${bindir}
-     install -m 0755 hello ${D}${bindir}/hello
- }
- EOF
- \end{lstlisting}
- \section{Runtime Dependencies}
- Declare RDEPENDS for runtime libraries and tools needed by the application. Use PACKAGES and FILES variables to control package splitting and contents.
- \section{QA}
- Address QA warnings and errors raised by insane.bbclass by ensuring proper file ownership, permissions, and correct library paths.
+\chapter{Building Applications with Yocto}
+
+\section{Overview}
+Yocto is not just for building the OS; it is also a build system for your applications. By creating recipes, you ensure your app is cross-compiled against the correct libraries and packaged automatically.
+
+\section{Build Systems}
+Yocto provides "classes" to handle common build systems.
+
+\subsection{CMake}
+Inherit \texttt{cmake} class. Yocto automatically passes the toolchain file.
+
+\begin{lstlisting}
+SUMMARY = "My CMake App"
+LICENSE = "MIT"
+LIC_FILES_CHKSUM = "file://LICENSE;md5=..."
+SRC_URI = "git://github.com/me/app.git;branch=main"
+S = "${WORKDIR}/git"
+
+inherit cmake
+
+# Pass extra arguments to cmake
+EXTRA_OECMAKE = "-DENABLE_FEATURE_X=ON"
+\end{lstlisting}
+
+\subsection{Autotools (GNU Build System)}
+Inherit \texttt{autotools} class. Handles \texttt{./configure}, \texttt{make}, \texttt{make install}.
+
+\begin{lstlisting}
+inherit autotools pkgconfig
+
+# If the source doesn't have a configure script yet (needs autoreconf)
+DEPENDS += "autoconf-archive"
+\end{lstlisting}
+
+\subsection{Python}
+Inherit \texttt{setuptools3} (for setup.py) or \texttt{python\_flit\_core} (for pyproject.toml).
+
+\begin{lstlisting}
+inherit setuptools3
+RDEPENDS:${PN} += "python3-requests"
+\end{lstlisting}
+
+\section{Installing Systemd Services}
+To start your application at boot, you need a systemd unit file.
+
+1. Create the unit file \texttt{files/myapp.service}:
+\begin{lstlisting}
+[Unit]
+Description=My Custom Application
+After=network.target
+
+[Service]
+ExecStart=/usr/bin/myapp
+Restart=always
+
+[Install]
+WantedBy=multi-user.target
+\end{lstlisting}
+
+2. Update the recipe:
+\begin{lstlisting}
+inherit systemd
+
+SYSTEMD_SERVICE:${PN} = "myapp.service"
+
+SRC_URI += "file://myapp.service"
+
+do_install:append() {
+    install -d ${D}${systemd_system_unitdir}
+    install -m 0644 ${WORKDIR}/myapp.service ${D}${systemd_system_unitdir}
+}
+\end{lstlisting}
+
+\section{Managing Users and Groups}
+If your application needs to run as a specific user, do not use \texttt{useradd} in shell scripts. Use \texttt{useradd.bbclass}.
+
+\begin{lstlisting}
+inherit useradd
+
+USERADD_PACKAGES = "${PN}"
+USERADD_PARAM:${PN} = "-u 1200 -d /home/myuser -r -s /bin/false myuser"
+GROUPADD_PARAM:${PN} = "-g 1200 mygroup"
+\end{lstlisting}
+
+\section{Package Groups}
+Instead of adding individual recipes to \texttt{local.conf}, create a "Package Group" recipe to bundle them.
+
+Create \texttt{recipes-core/packagegroups/packagegroup-my-product.bb}:
+\begin{lstlisting}
+SUMMARY = "My Product Packages"
+inherit packagegroup
+
+RDEPENDS:${PN} = "\
+    myapp \
+    networkmanager \
+    openssh \
+    python3-numpy \
+"
+\end{lstlisting}
+
+Then add \texttt{packagegroup-my-product} to your image recipe.
