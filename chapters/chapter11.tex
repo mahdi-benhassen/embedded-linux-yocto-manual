@@ -1,36 +1,111 @@
- \chapter{BitBake and Recipes}
- \section{Recipe Structure}
-A recipe declares metadata including description, license, \texttt{SRC\_URI} for fetching sources, and tasks like \texttt{do\_compile} and \texttt{do\_install}. Variables control build flags and dependencies.
- \section{Hands-On: Simple Recipe}
- Create a layer and add a recipe to build a hello application.
- \begin{lstlisting}[language=bash]
- cd ~/yocto/poky
- source oe-init-build-env
- bitbake-layers create-layer ../meta-hello
- bitbake-layers add-layer ../meta-hello
- mkdir -p ../meta-hello/recipes-example/hello
- cat > ../meta-hello/recipes-example/hello/hello_1.0.bb << 'EOF'
- SUMMARY = "Hello application"
- LICENSE = "MIT"
- LIC_FILES_CHKSUM = "file://LICENSE;md5=3b83ef96387f14655fc854ddc3c6bd57"
- SRC_URI = "file://hello.c file://LICENSE"
- S = "${WORKDIR}"
- do_compile() {
-     ${CC} ${CFLAGS} ${LDFLAGS} hello.c -o hello
- }
- do_install() {
-     install -d ${D}${bindir}
-     install -m 0755 hello ${D}${bindir}/hello
- }
- EOF
- cat > ../meta-hello/recipes-example/hello/hello.c << 'EOF'
- #include <stdio.h>
- int main(){ printf("Hello from Yocto\\n"); return 0; }
- EOF
- cp /usr/share/common-licenses/MIT ../meta-hello/recipes-example/hello/LICENSE
- bitbake hello
- \end{lstlisting}
- \section{Tasks and Dependencies}
- BitBake creates a task graph with dependencies between recipes. Use bitbake -g to generate graphs and inspect task ordering and shared state reuse.
- \section{Packaging}
-Enable packaging into rpm, deb, or ipk and ensure the \texttt{do\_package} task creates correct file lists and dependencies.
+\chapter{BitBake and Recipes}
+
+\section{Introduction to Recipes}
+A recipe (\texttt{.bb} file) is the fundamental unit of metadata in Yocto. It describes a piece of software: where to get it, how to configure it, how to build it, and how to package it. Recipes are parsed by BitBake to generate tasks.
+
+\section{Variable Assignment}
+Understanding variable assignment is the single most important skill for a Yocto developer.
+
+\begin{itemize}
+    \item \texttt{=} \textbf{Hard Assignment}: Sets the value immediately.
+    \begin{lstlisting}
+FOO = "bar"
+    \end{lstlisting}
+    \item \texttt{?=} \textbf{Default Value}: Sets the value only if it hasn't been set yet.
+    \begin{lstlisting}
+FOO ?= "default"
+    \end{lstlisting}
+    \item \texttt{??=} \textbf{Weak Default}: Sets the value if it's unset after parsing \emph{all} files. Lowest priority.
+    \item \texttt{+=} \textbf{Append with space}: Adds to the list.
+    \begin{lstlisting}
+FOO += "extra"
+    \end{lstlisting}
+    \item \texttt{=+} \textbf{Prepend with space}: Adds to the beginning.
+    \item \texttt{:=} \textbf{Immediate Expansion}: Expands variables on the right-hand side immediately (standard assignment is lazy).
+\end{itemize}
+
+\section{Recipe Anatomy}
+A typical recipe contains standard variables and functions:
+
+\begin{lstlisting}
+SUMMARY = "A short description"
+LICENSE = "MIT"
+LIC_FILES_CHKSUM = "file://LICENSE;md5=..."
+
+# Where to find the source (git, http, ftp, file)
+SRC_URI = "git://github.com/user/repo.git;protocol=https;branch=main"
+SRCREV = "abcdef123456..."
+
+# Directory where source is unpacked
+S = "${WORKDIR}/git"
+
+# Dependencies
+DEPENDS = "libfoo"       # Build-time dependency
+RDEPENDS:${PN} = "bash"  # Runtime dependency
+\end{lstlisting}
+
+\section{The Task List}
+BitBake executes python or shell functions called "tasks". The standard sequence is:
+\begin{enumerate}
+    \item \texttt{do\_fetch}: Download source.
+    \item \texttt{do\_unpack}: Extract to \texttt{WORKDIR}.
+    \item \texttt{do\_patch}: Apply patches found in \texttt{SRC\_URI}.
+    \item \texttt{do\_configure}: Run configuration scripts (autotools, cmake).
+    \item \texttt{do\_compile}: Compile the source.
+    \item \texttt{do\_install}: Copy files to the \texttt{D} (destination) directory.
+    \item \texttt{do\_package}: Split files into packages.
+    \item \texttt{do\_rootfs}: (Image recipes only) Install packages into the final image.
+\end{enumerate}
+
+\section{Hands-On: Creating a "Hello World" Recipe}
+We will create a new layer and a recipe for a simple C application.
+
+\subsection{1. Create the Layer}
+\begin{lstlisting}[language=bash]
+bitbake-layers create-layer ../meta-custom
+bitbake-layers add-layer ../meta-custom
+\end{lstlisting}
+
+\subsection{2. Add the Recipe}
+Create \texttt{../meta-custom/recipes-example/hello/hello\_1.0.bb}:
+\begin{lstlisting}
+SUMMARY = "Simple Hello World Application"
+LICENSE = "MIT"
+LIC_FILES_CHKSUM = "file://${COMMON_LICENSE_DIR}/MIT;md5=0835ade698e0bcf8506ecda2f7b4f302"
+
+SRC_URI = "file://hello.c"
+
+S = "${WORKDIR}"
+
+do_compile() {
+    ${CC} ${CFLAGS} ${LDFLAGS} hello.c -o hello
+}
+
+do_install() {
+    install -d ${D}${bindir}
+    install -m 0755 hello ${D}${bindir}/hello
+}
+\end{lstlisting}
+
+\subsection{3. Add the Source}
+Create \texttt{../meta-custom/recipes-example/hello/files/hello.c}:
+\begin{lstlisting}[language=c]
+#include <stdio.h>
+int main() {
+    printf("Hello from Yocto!\n");
+    return 0;
+}
+\end{lstlisting}
+
+\subsection{4. Build It}
+\begin{lstlisting}[language=bash]
+bitbake hello
+\end{lstlisting}
+
+\section{Debugging Recipes}
+When things go wrong, use these tools:
+\begin{itemize}
+    \item \texttt{bitbake -e <recipe>}: Prints the final value of all variables. Pipe to grep to search.
+    \item \texttt{bitbake -c devshell <recipe>}: Opens a terminal inside the build environment (with environment variables set).
+    \item \texttt{WORKDIR/temp/log.do\_<task>}: The log file for a specific task.
+\end{itemize}

@@ -1,9 +1,58 @@
- \chapter{Layers and Customization}
- \section{Layer Design}
- Organize metadata by functionality and hardware. Keep BSP, distro configuration, and application recipes in separate layers. Use priority and compatibility fields to control overrides.
- \section{Configuration}
-Customize local.conf for parallelism, \texttt{DL\_DIR}, \texttt{SSTATE\_DIR}, and MACHINE. Configure DISTRO features and IMAGE features to include services and packages.
- \section{bbappend}
- Use .bbappend files to modify upstream recipes without forking. Override variables, add patches, or adjust tasks. Ensure layer priority allows the intended override.
- \section{Hands-On: Custom Image}
- Create a custom image recipe that extends core-image-base and adds your application package and system services. Build and deploy to the target.
+\chapter{Layers and Customization}
+
+\section{The Layer Model}
+Yocto's modularity comes from "layers". A layer is a Git repository containing recipes, configuration, and classes. Layers can stack on top of each other.
+\begin{itemize}
+    \item \textbf{OE-Core (meta)}: The base layer.
+    \item \textbf{meta-poky}: Poky distribution policy.
+    \item \textbf{meta-<bsp>}: Hardware support (e.g., meta-raspberrypi).
+    \item \textbf{meta-<yourcompany>}: Your proprietary application and logic.
+\end{itemize}
+
+\section{Modifying Recipes with .bbappend}
+\textbf{Never edit a recipe in an upstream layer directly.} Instead, use a \texttt{.bbappend} file in your own layer to override or extend it.
+
+\subsection{Rules for bbappend}
+\begin{enumerate}
+    \item The filename must match the original recipe name exactly (using \texttt{\%} as a wildcard for version).
+    \item Your layer must have a higher (or equal) priority.
+    \item The original recipe must be in a layer present in \texttt{bblayers.conf}.
+\end{enumerate}
+
+\subsection{Example: Patching the Kernel}
+To apply a patch to the Linux kernel recipe in \texttt{meta-bsp}:
+Create \texttt{meta-custom/recipes-kernel/linux/linux-yocto\_\%.bbappend}:
+\begin{lstlisting}
+FILESEXTRAPATHS:prepend := "${THISDIR}/files:"
+
+SRC_URI += "file://0001-fix-my-driver.patch"
+\end{lstlisting}
+
+\section{Layer Priority}
+Layers define a priority in \texttt{conf/layer.conf}.
+\begin{lstlisting}
+BBFILE_PRIORITY_meta-custom = "10"
+\end{lstlisting}
+If a recipe exists in multiple layers, the one from the highest priority layer is used. \texttt{.bbappend} files are applied regardless of priority, but priority matters for masking.
+
+\section{Hands-On: Creating a Custom Image}
+Instead of modifying \texttt{local.conf} to add packages, create a dedicated image recipe.
+
+Create \texttt{meta-custom/recipes-core/images/my-product-image.bb}:
+\begin{lstlisting}
+require recipes-core/images/core-image-base.bb
+
+SUMMARY = "My Product Image"
+
+IMAGE_INSTALL += "hello"
+IMAGE_INSTALL += "openssh"
+IMAGE_INSTALL += "htop"
+
+# Add 100MB of free space
+IMAGE_ROOTFS_EXTRA_SPACE = "102400"
+\end{lstlisting}
+
+Build it:
+\begin{lstlisting}[language=bash]
+bitbake my-product-image
+\end{lstlisting}

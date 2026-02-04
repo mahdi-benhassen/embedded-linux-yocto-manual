@@ -1,24 +1,74 @@
- \chapter{Yocto Build Setup}
- \section{Obtain Sources}
- Clone the Poky repository and any needed layers. Choose a release branch appropriate for your product.
- \begin{lstlisting}[language=bash]
- mkdir -p ~/yocto
- cd ~/yocto
- git clone https://git.yoctoproject.org/poky
- cd poky
- git checkout kirkstone
- \end{lstlisting}
- \section{Initialize Build Directory}
- Source the environment script to create and enter a build directory.
- \begin{lstlisting}[language=bash]
- source oe-init-build-env
- \end{lstlisting}
- \section{Configure Layers}
- Edit conf/bblayers.conf to add external layers and conf/local.conf for machine and image customization. Verify layer compatibility with the selected release.
- \section{First Build}
- Build a minimal image to confirm the environment and dependencies.
- \begin{lstlisting}[language=bash]
- bitbake core-image-minimal
- \end{lstlisting}
- \section{Artifacts}
- Inspect tmp/deploy/images for generated binaries. Use wic to create bootable images when supported by the machine.
+\chapter{Yocto Build Setup}
+
+\section{Prerequisites}
+Before starting, ensure your host machine (Ubuntu 20.04/22.04 LTS is recommended) has the necessary dependencies.
+\begin{lstlisting}[language=bash]
+sudo apt update && sudo apt install -y gawk wget git diffstat unzip texinfo \
+gcc build-essential chrpath socat cpio python3 python3-pip python3-pexpect \
+xz-utils debianutils iputils-ping python3-git python3-jinja2 libegl1-mesa \
+libsdl1.2-dev pylint3 xterm zstd liblz4-tool
+\end{lstlisting}
+
+\section{Obtaining Poky}
+Clone the reference distribution, Poky. We will use the \textbf{Kirkstone} release (LTS).
+\begin{lstlisting}[language=bash]
+mkdir -p ~/yocto
+cd ~/yocto
+git clone -b kirkstone https://git.yoctoproject.org/poky
+\end{lstlisting}
+
+\section{Initializing the Environment}
+Source the build environment script. This sets up your \texttt{PATH} and creates the build directory.
+\begin{lstlisting}[language=bash]
+source poky/oe-init-build-env build-qemu
+\end{lstlisting}
+You are now in the \texttt{build-qemu/} directory.
+
+\section{Configuring local.conf}
+The \texttt{conf/local.conf} file controls the build settings. Edit it to optimize performance and disk usage.
+
+\subsection{Essential Variables}
+\begin{itemize}
+    \item \texttt{MACHINE}: The target hardware. Defaults to \texttt{qemux86-64}. For ARM emulation, use:
+    \begin{lstlisting}
+MACHINE ?= "qemuarm"
+    \end{lstlisting}
+    \item \texttt{DL\_DIR}: Where to store downloaded sources. \textbf{Move this outside the build dir} to share it.
+    \begin{lstlisting}
+DL_DIR ?= "${TOPDIR}/../downloads"
+    \end{lstlisting}
+    \item \texttt{SSTATE\_DIR}: Where to store shared state cache.
+    \begin{lstlisting}
+SSTATE_DIR ?= "${TOPDIR}/../sstate-cache"
+    \end{lstlisting}
+    \item \texttt{BB\_NUMBER\_THREADS} \& \texttt{PARALLEL\_MAKE}: Set these to your CPU core count (e.g., 8).
+    \item \texttt{PACKAGE\_CLASSES}: Package format (rpm, deb, ipk).
+    \begin{lstlisting}
+PACKAGE_CLASSES ?= "package_rpm"
+    \end{lstlisting}
+    \item \texttt{EXTRA\_IMAGE\_FEATURES}: Enable debugging tweaks (not for production!).
+    \begin{lstlisting}
+EXTRA_IMAGE_FEATURES ?= "debug-tweaks"
+    \end{lstlisting}
+\end{itemize}
+
+\section{Building an Image}
+Build the minimal image to verify setup:
+\begin{lstlisting}[language=bash]
+bitbake core-image-minimal
+\end{lstlisting}
+This will take time (fetching sources, building toolchain, compiling kernel/packages).
+
+\section{Running with QEMU}
+Once built, run the image in the emulator:
+\begin{lstlisting}[language=bash]
+runqemu qemuarm nographic
+\end{lstlisting}
+Login as \texttt{root} (no password). To exit QEMU, press \texttt{Ctrl+A} then \texttt{X}.
+
+\section{Troubleshooting}
+\begin{itemize}
+    \item \textbf{Fetch Failures}: Check your proxy settings or try a different mirror.
+    \item \textbf{Disk Space}: Yocto needs 50GB+. If you run out, delete \texttt{tmp/}.
+    \item \textbf{Missing Headers}: Ensure host dependencies are installed.
+\end{itemize}

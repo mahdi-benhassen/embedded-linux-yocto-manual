@@ -1,9 +1,55 @@
- \chapter{Yocto Project Fundamentals}
- \section{Scope}
- The Yocto Project provides a build framework to create custom Linux distributions for embedded systems. It uses OpenEmbedded and BitBake to describe metadata, tasks, and artifacts.
- \section{Key Concepts}
- Important entities are layers, recipes, classes, tasks, images, and machines. Layers group related metadata. Recipes describe how to fetch, configure, build, and package software. Classes encapsulate common behavior. Tasks are build steps managed by BitBake.
- \section{Metadata}
- Metadata files include .bb recipes, .bbappend overrides, .bbclass classes, and configuration in local.conf and bblayers.conf. The build directory separates working state and sstate cache.
- \section{Outputs}
- Yocto produces images, packages, SDKs, and artifacts like licenses and manifests. Images are configured by DISTRO and IMAGE features and tailored to specific machines.
+\chapter{Yocto Project Fundamentals}
+
+\section{Introduction}
+The Yocto Project is an open-source collaboration project that provides templates, tools, and methods to help you create custom Linux-based systems for embedded products regardless of the hardware architecture. It is not a Linux distribution itself; rather, it is a tool to \emph{create} a Linux distribution.
+
+\section{Terminology De-mystified}
+Newcomers often confuse the following terms. Understanding the distinction is crucial:
+
+\begin{description}
+    \item[The Yocto Project] The umbrella organization and working group under the Linux Foundation.
+    \item[OpenEmbedded (OE)] The build framework and community that maintains the metadata (recipes). Yocto is based on OpenEmbedded.
+    \item[BitBake] The build engine (make-like tool). It parses metadata, constructs a dependency graph, and executes tasks.
+    \item[Poky] The reference distribution of the Yocto Project. It is a combined repository containing BitBake, OpenEmbedded-Core (OE-Core), and Yocto-specific configuration.
+    \item[Metadata] The files that define \emph{what} to build and \emph{how}. These include recipes (\texttt{.bb}), configuration files (\texttt{.conf}), classes (\texttt{.bbclass}), and includes (\texttt{.inc}).
+\end{description}
+
+\section{The Build Workflow}
+The Yocto build process transforms source code into a bootable image through a pipeline of steps:
+
+\begin{enumerate}
+    \item \textbf{Fetch}: BitBake downloads source code from upstream repositories (Git, tarballs, SVN) into a local download directory (\texttt{DL\_DIR}).
+    \item \textbf{Extract \& Patch}: Sources are unpacked into a working directory (\texttt{WORKDIR}) and patches are applied.
+    \item \textbf{Configure}: The build system configures the software (e.g., running \texttt{./configure} or \texttt{cmake}).
+    \item \textbf{Compile}: The source is compiled using the cross-toolchain.
+    \item \textbf{Install}: Binaries and files are installed into a temporary destination directory (\texttt{D}).
+    \item \textbf{Package}: Files in \texttt{D} are split into packages (RPM, DEB, or IPK).
+    \item \textbf{Image Generation}: BitBake selects the required packages and installs them into a root filesystem image.
+    \item \textbf{SDK Generation}: Optionally, a Software Development Kit (SDK) is generated for application developers.
+\end{enumerate}
+
+\section{The Build Directory Layout}
+When you initialize a build environment (using \texttt{oe-init-build-env}), a build directory is created. Its structure is standardized:
+
+\begin{itemize}
+    \item \texttt{conf/}: Configuration files.
+    \begin{itemize}
+        \item \texttt{local.conf}: User-specific settings (machine, parallelism, disk space).
+        \item \texttt{bblayers.conf}: Defines which layers are active in the build.
+    \end{itemize}
+    \item \texttt{tmp/}: The temporary work area. \textbf{This can be massive (50GB+)}.
+    \begin{itemize}
+        \item \texttt{tmp/work/}: Where compilation happens. Organized by architecture and recipe.
+        \item \texttt{tmp/deploy/}: Final output (images, packages, SDKs).
+        \item \texttt{tmp/sysroots/}: Shared libraries and headers for cross-compilation (deprecated in modern Yocto in favor of recipe-specific sysroots).
+    \end{itemize}
+    \item \texttt{downloads/} (\texttt{DL\_DIR}): The cache of downloaded source tarballs. Shared across builds.
+    \item \texttt{sstate-cache/} (\texttt{SSTATE\_DIR}): The Shared State cache. Accelerates builds by reusing pre-built artifacts. \textbf{Critical for performance}.
+\end{itemize}
+
+\section{Shared State Cache (sstate)}
+Yocto's "secret weapon" is the sstate cache. Before executing a task (like compilation), BitBake checks if a valid artifact exists in the sstate-cache. If the inputs (compiler version, source code, configuration) haven't changed, it simply extracts the result instead of rebuilding.
+
+\begin{tip}
+    Always configure a persistent \texttt{DL\_DIR} and \texttt{SSTATE\_DIR} outside your build directory to speed up future builds and save disk space.
+\end{tip}
